@@ -46,7 +46,7 @@ def corr(data,parameters=False,datasets=False):
         
         if datasets:
             # Pearson Correlation for the data sets. The same parameters are investigated
-            print('Pearson Correlation is Calculated for the data sets for the same parameters')
+            print('Pearson Correlation is Calculated for the data sets (test1 to test5) for the same parameters')
             Covariance_all   = {}
             for param in list_params_:
                 Covariance_all[param]  = {}   
@@ -84,17 +84,17 @@ def corr(data,parameters=False,datasets=False):
 
             # Scaler Plot for the Correlations of Targets with Features
             for param in list_params_:
-                print(param)
+                print('%s of %s vs %s of %s' % (param,list_tests_[0],param,list_tests_))
                 plt.figure(figsize=(26,9))
                 plt.scatter(np.arange(len(Corr[param][list_tests_[0]])),[Corr[param][list_tests_[0]][test] for test in list_tests_],label=  param+'_vs_'+param)
                 plt.legend()
                 plt.xlabel([list_tests_,list_tests_])
                 plt.ylabel(param)
-                plt.title('Correlation for the '+param)
+                plt.title('Correlation for the %s of %s' % (param,list_tests_[0]))
                 plt.grid()
                 plt.show()
             
-            print('\n ***************************************************************** \n')
+            print('\n ************************************************************************************************** \n')
         
         if parameters:
             # Pearson Correlation for the parameters. Different parameters of the same data set are investigated
@@ -136,27 +136,28 @@ def corr(data,parameters=False,datasets=False):
 
             # Scaler Plot for the Correlations of Targets with Features
             for test in list_tests_:
-                print(test)
+                print('%s vs the other params for %s' % (list_params_[0],test))
                 plt.figure(figsize=(26,9))
                 plt.scatter(np.arange(len(Corr[test][list_params_[0]])),[Corr[test][list_params_[0]][param] for param in list_params_],label=  test+'_vs_'+test)
                 plt.legend()
                 plt.xlabel([list_params_,list_params_])
-                plt.ylabel(test)
+                plt.ylabel(list_params_[0])
                 plt.title('Correlation for %s at the given dataset %s' % (list_params_[0],test))
                 plt.grid()
                 plt.show()
             
-            print('\n ***************************************************************** \n')    
+            print('\n ************************************************************************************************** \n')    
             
             for param1 in list_params_:
+                print('%s vs the other params for %s' % (param1,list_tests_[0]))
                 plt.figure(figsize=(26,9))
-                plt.scatter(np.arange(len(Corr[list_tests_[0]][list_params_[0]])),[Corr[list_tests_[0]][param1][param2] for param2 in list_params_],label=  test+'_vs_'+test)
+                plt.scatter(np.arange(len(Corr[list_tests_[0]][list_params_[0]])),[Corr[list_tests_[0]][param1][param2] for param2 in list_params_],label=  list_tests_[0]+'_vs_'+list_tests_[0])
                 plt.legend()
                 plt.xlabel([list_params_,list_params_])
                 plt.ylabel(param1)
-                plt.title('Correlation for the '+ param1)
+                plt.title('Correlation for the %s vs the other params' % (param1))
                 plt.grid()
                 plt.show()
-            print('\n ***************************************************************** \n')
+            print('\n ************************************************************************************************** \n')
             
         return Covariance_all,sigma_all,Corr
