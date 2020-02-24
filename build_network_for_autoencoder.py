@@ -363,6 +363,7 @@ class model(prepare_inputs):
                 plt.ylabel('distance between ztransformed %s of %s data according to train data' % (dim,data))
                 plt.grid()
                 plt.show()
+                
 
     def writeStandartScaler_AsMatFile(self,scaler,fileName,keys):
         if os.path.exists('./MatFiles/')==False:
