@@ -2,132 +2,75 @@ from import_modules import *
 from helper_functions import *
 
 class prepare_inputs:
-    def __init__(self,list_x_train_test_valid_sc, list_y_train_test_valid_sc, list_tests, list_params,
-                 feature_keys, target_keys, list_x_flight_sc, list_y_flight_sc,cnn=False):
+    def __init__(self, data_splitted, list_tests, list_params,
+                 feature_keys, target_keys,cnn=False):
         
         ##########################################################################################################
+        self.data_splitted              = data_splitted
         self.list_tests                 = list_tests
         self.list_params                = list_params
         self.feature_keys               = feature_keys
         self.target_keys                = target_keys
-        self.list_x_train_test_valid_sc = list_x_train_test_valid_sc
-        self.list_y_train_test_valid_sc = list_y_train_test_valid_sc
-        self.list_x_flight_sc           = list_x_flight_sc
-        self.list_y_flight_sc           = list_y_flight_sc
+        self.dict_x                     = {}
+        self.dict_y                     = {}
         self.dict_x_sc                  = {}
         self.dict_y_sc                  = {}
         self.cnn                        = cnn
 
-        list_split_through = ['train','test','valid']
+        self.list_split_through = [key for key in self.data_splitted.dict_x.keys()]
+        for key in self.list_split_through:
+            self.dict_x[key]    = self.data_splitted.dict_x[key]
+            self.dict_y[key]    = self.data_splitted.dict_y[key]
+            self.dict_x_sc[key] = self.data_splitted.dict_x_sc[key]
+            self.dict_y_sc[key] = self.data_splitted.dict_y_sc[key]
 
-        for value,key in enumerate(list_split_through):
-            self.dict_x_sc[key] = list_x_train_test_valid_sc[value]
-
-        for value,key in enumerate(list_split_through):
-            self.dict_y_sc[key] = list_y_train_test_valid_sc[value]
-
-        print(' Shapes of the Train, Test and Validation Sets of Features \n')
-        for ii in list_split_through:
+        print('Shapes of the %s and  Sets of Input Features \n' % (self.list_split_through))
+        for data in self.list_split_through:
             print('--------------------------------------------------------------')
-            key_array = [jj for jj in self.dict_x_sc[ii].keys()]
-            for kk in key_array:
-                print(ii,'input set shape for',kk,'is: ', self.dict_x_sc[ii][kk].shape)
+            for feature in self.feature_keys:
+                print(data,' input set shape for ',feature,' is: ', self.dict_x_sc[data][feature].shape)
             
         print('\n*******************************************************************************\n')
         # Shapes of the Train, Test and Validation Sets of Output Targets
-        print(' Shapes of the Train, Test and Validation Sets of Output Targets \n')
-        for ii in list_split_through:
+        print('Shapes of the %s and  Sets of Output Targets \n' % (self.list_split_through))
+        for data in self.list_split_through:
             print('--------------------------------------------------------------')
-            for kk in self.target_keys:
-                print(ii,'target output set shape for',kk,'is: ', self.dict_y_sc[ii][kk].shape)
+            for target in self.target_keys:
+                print(data,' target output set shape for ',target,' is: ', self.dict_y_sc[data][target].shape)
 
-        print('\n')        
-        self.dict_x_flight_sc = {}
-        self.dict_y_flight_sc = {}
-        for test in self.list_tests[1:]:
-            self.dict_x_flight_sc[test] = self.list_x_flight_sc[test][0]
-            self.dict_y_flight_sc[test] = self.list_y_flight_sc[test][0]
-
+        print('\n')
         ##########################################################################################################
+        self.input_dl      = {}
+        self.output_dl     = {}
 
-        self.dict_input_features = {}
-        self.inp                 = {}
-        self.inp_test            = {}
-        self.inp_valid           = {}
-        self.out                 = {}
-        self.out_custom          = {}
-        self.input_dl_train      = {}
-        self.input_dl_test       = {}
-        self.input_dl_valid      = {}
-        self.input_dl_flight     = {}
-        self.input_dl_origin     = {}
-        self.out_dl_train        = {}
-        self.out_dl_test         = {}
-        self.out_dl_valid        = {}
-        self.out_dl_flight       = {}
-        self.out_dl_origin       = {}
-        self.key_array           = [jj for jj in self.dict_x_sc['train'].keys()]
+        for key in self.list_split_through:
+            self.input_dl[key]  = {'input_all'   : self.dict_x_sc[key][list_params[0]]}
+            self.output_dl[key] = {'all_targets' : self.dict_y_sc[key][list_params[0]]}
 
-        for ii in key_array:
-            self.dict_input_features[ii] = Input(shape=(self.dict_x_sc['train'][ii].shape[1],), name=ii)
-            self.inp[ii]                 = self.dict_x_sc['train'][ii]  
-            self.inp_test[ii]            = self.dict_x_sc['test'][ii]
-            self.inp_valid[ii]           = self.dict_x_sc['valid'][ii]
-
-        for ii in self.target_keys:
-            self.out[ii+'_out']                 = self.dict_y_sc['train'][ii]
-            self.out_custom[ii+'_custom_out']   = self.dict_y_sc['train'][ii]
-
-        self.input_dl_train['input_all']  = self.dict_x_sc['train']['param1']
-        self.input_dl_test['input_all']   = self.dict_x_sc['test']['param1']
-        self.input_dl_valid['input_all']  = self.dict_x_sc['valid']['param1']
-        self.out_dl_train['all_targets']  = self.dict_y_sc['train']['param1']
-        self.out_dl_test['all_targets']   = self.dict_y_sc['test']['param1']
-        self.out_dl_valid['all_targets']  = self.dict_y_sc['valid']['param1']
-
-        for trgt in self.feature_keys[1:]:
-            self.input_dl_train['input_all']  =  np.hstack((self.input_dl_train['input_all'],self.dict_x_sc['train'][trgt]))
-            self.input_dl_test['input_all']   =  np.hstack((self.input_dl_test['input_all'],self.dict_x_sc['test'][trgt]))
-            self.input_dl_valid['input_all']  =  np.hstack((self.input_dl_valid['input_all'],self.dict_x_sc['valid'][trgt]))
-            
-        for trgt in self.target_keys[1:]:
-            self.out_dl_train['all_targets']  =  np.hstack((self.out_dl_train['all_targets'],self.dict_y_sc['train'][trgt]))
-            self.out_dl_test['all_targets']   =  np.hstack((self.out_dl_test['all_targets'],self.dict_y_sc['test'][trgt]))
-            self.out_dl_valid['all_targets']  =  np.hstack((self.out_dl_valid['all_targets'],self.dict_y_sc['valid'][trgt]))
-
-        for test in self.list_tests[1:]:
-            self.input_dl_flight[test] = {}
-            self.out_dl_flight[test]   = {}
-
-        for test in self.list_tests[1:]:
-            self.input_dl_flight[test]['input_all'] = self.dict_x_flight_sc[test]['param1']
-            self.out_dl_flight[test]['all_targets'] = self.dict_y_flight_sc[test]['param1']    
-
-        for trgt in self.feature_keys[1:]:
-            for test in self.list_tests[1:]:
-                self.input_dl_flight[test]['input_all'] =  np.hstack((self.input_dl_flight[test]['input_all'],self.dict_x_flight_sc[test][trgt]))
-                self.out_dl_flight[test]['all_targets'] =  np.hstack((self.out_dl_flight[test]['all_targets'],self.dict_y_flight_sc[test][trgt]))
+        for key in self.list_split_through:
+            for param in list_params[1:]:
+                self.input_dl[key]['input_all']    =  np.hstack((self.input_dl[key]['input_all'],self.dict_x_sc[key][param]))
+                self.output_dl[key]['all_targets'] =  np.hstack((self.output_dl[key]['all_targets'],self.dict_y_sc[key][param]))
 
         if self.cnn:
-            self.input_all                     = Input(shape=(self.input_dl_train['input_all'].shape[1],1), name='input_all')
-            self.input_dl_train['input_all']   = self.input_dl_train['input_all'].reshape(self.input_dl_train['input_all'].shape[0],
-                                                                                          self.input_dl_train['input_all'].shape[1],1)
-            self.input_dl_test['input_all']    = self.input_dl_test['input_all'].reshape(self.input_dl_test['input_all'].shape[0],
-                                                                                         self.input_dl_test['input_all'].shape[1],1)
-            self.input_dl_valid['input_all']   = self.input_dl_valid['input_all'].reshape(self.input_dl_valid['input_all'].shape[0],
-                                                                                          self.input_dl_valid['input_all'].shape[1],1)
-            
+            self.input_all                      = Input(shape=(self.input_dl['train']['input_all'].shape[1],1), name='input_all')
+            for key in self.list_split_through:
+                self.input_dl[key]['input_all'] = self.input_dl[key]['input_all'].reshape(self.input_dl[key]['input_all'].shape[0],
+                                                                                          self.input_dl[key]['input_all'].shape[1],1)
         else:
-            self.input_all        = Input(shape=(self.input_dl_train['input_all'].shape[1],), name='input_all')
+            self.input_all = Input(shape=(self.input_dl['train']['input_all'].shape[1],), name='input_all')
+        ##########################################################################################################
 
 # BUILD CUSTOM NETWORK
 class model(prepare_inputs):
-    def __init__(self, list_x_train_test_valid_sc, list_y_train_test_valid_sc, list_tests, list_params,
-                 feature_keys, target_keys, list_x_flight_sc, list_y_flight_sc,cnn,
-                 mdl_name, act='tanh', trainable_layer=True, bottleneck=3, initializer='glorot_normal',
-                 list_nn=[150,100,20],load_weights=True,scalers=None):
-        super().__init__(list_x_train_test_valid_sc, list_y_train_test_valid_sc, list_tests, list_params,
-                         feature_keys, target_keys, list_x_flight_sc, list_y_flight_sc,cnn=False)
+    def __init__(self, data_splitted, list_tests, list_params,
+                 feature_keys, target_keys,cnn,mdl_name, act='tanh', 
+                 trainable_layer=True, bottleneck=3, initializer='glorot_normal',
+                 list_nn=[150,100,20],load_weights=True):
+
+        super().__init__(data_splitted, list_tests, list_params,
+                 feature_keys, target_keys,cnn=False)
+
         self.model_name      = mdl_name
         self.act             = act
         self.trainable_layer = trainable_layer
@@ -140,8 +83,8 @@ class model(prepare_inputs):
         self.scaler_path     = {'feature' : None,
                                 'target'  : None}
         self.regularization_paramater = 0.0
-        self.dict_scalery    = scalers['scaler_y']
-        self.dict_scalerx    = scalers['scaler_x']
+        self.dict_scalery    = data_splitted.dict_scalery
+        self.dict_scalerx    = data_splitted.dict_scalerx
 
         L1 = Dense(self.list_nn[0], activation=self.act,
                      kernel_initializer=self.init, trainable = self.trainable_layer,
@@ -211,11 +154,11 @@ class model(prepare_inputs):
         self.num_epochs = num_epochs
         self.batch_size = batch_size
         print('Start Running \n')
-        self.history = self.model.fit(self.input_dl_train,
-                                      self.out_dl_train, 
+        self.history = self.model.fit(self.input_dl['train'],
+                                      self.output_dl['train'], 
                                       batch_size=self.batch_size, epochs=self.num_epochs, shuffle=True,
                                       callbacks=[self.checkpoint, self.reduce_lr],
-                                      validation_data=(self.input_dl_test,self.out_dl_test), verbose=1)
+                                      validation_data=(self.input_dl['test'],self.output_dl['test']), verbose=1)
         self.val_loss = np.min(self.history.history['val_loss'])
         
     def results(self,load_weights=False):
@@ -224,400 +167,203 @@ class model(prepare_inputs):
             self.model.load_weights(self.model_path)
             print('Weights Loaded')
         
-        self.dict_y_flight    = {}
-        self.dict_y_flight_bn = {}
-        for test in self.list_tests[1:]:
-            self.dict_y_flight[test] = {}
-            self.dict_y_flight[test] = {}
-        
-        if self.cnn:
-            self.input_dl_flight['input_all'] = self.input_dl_flight[test]['input_all'].reshape(self.input_dl_flight[test]['input_all'].shape[0],
-                                                                                self.input_dl_flight[test]['input_all'].shape[1],1)
-        
-        # Make the prediction for training set
-        self.out_dl_predicted_train = self.model.predict(self.input_dl_train, batch_size=None)
-        print('Prediction for Training Set is Completed')
+        self.out_dl_predicted            = {}
+        self.out_dl_predicted_bottleneck = {}
+        for data in self.list_split_through:
+            self.out_dl_predicted[data]            = {'all_target' : self.model.predict(self.input_dl[data], batch_size=None)}
+            self.out_dl_predicted_bottleneck[data] = {'all_target' : self.bottleneck_layer.predict(self.input_dl[data], batch_size=None)}
+            print('Prediction for %s set is completed' % (data))
+            print('Bottleneck Prediction for %s set is completed' % (data))
+            for value,key in enumerate(self.list_params):
+                self.out_dl_predicted[data][key]            = {'scaled'  : self.out_dl_predicted[data]['all_target'][:,value]}
+                self.out_dl_predicted[data][key]['inverse'] = self.dict_scalery[key].inverse_transform(self.out_dl_predicted[data][key]['scaled'].reshape(-1,1))
+            for value,key in enumerate(self.target_bn):
+                self.out_dl_predicted_bottleneck[data][key] = {'scaled'  : self.out_dl_predicted_bottleneck[data]['all_target'][:,value]}
+        print('-------------------------------------------------------------------------------------\n')
+        for data in self.list_split_through:
+            print('\nExplained Variance Calculation for %s set' % (data))
+            for param in self.list_params:
+                print("Explained Variance of %s set for %s : %.8f" % (data,param,explained_variance_score(self.dict_y_sc[data][param],
+                      self.out_dl_predicted[data][param]['scaled'].reshape(self.out_dl_predicted[data][param]['scaled'].shape[0],1))))
+            print('-------------------------------------------------------------------------------------')
 
-        # Make the prediction for test set
-        self.out_dl_predicted_test = self.model.predict(self.input_dl_test, batch_size=None)
-        print('Prediction for Test Set is Completed')
-
-        # Make the prediction for validation set
-        self.out_dl_predicted_valid = self.model.predict(self.input_dl_valid, batch_size=None)
-        print('Prediction for Validation Set is Completed')
-        
-        # Make the prediction for flight set
-        self.out_dl_predicted_flight    = {}
-        self.out_dl_predicted_flight_bn = {}
-        for test in self.list_tests[1:]:
-            self.out_dl_predicted_flight[test]    = self.model.predict(self.input_dl_flight[test], batch_size=None)
-            self.out_dl_predicted_flight_bn[test] = self.bottleneck_layer.predict(self.input_dl_flight[test], batch_size=None)
-        print('Prediction for Flight Set is Completed')
-
-        print('-------------------------------------------------------------------------------------')
-        self.output_dl_train      = {}
-        self.output_dl_test       = {}
-        self.output_dl_valid      = {}
-        self.output_dl_inv_test   = {}
-        self.output_dl_inv_valid  = {}
-        self.output_dl_inv_train  = {}
-        self.dict_x_train         = {}
-        self.dict_x_test          = {}
-        self.dict_x_valid         = {}
-        self.dict_y_train         = {}
-        self.dict_y_test          = {}
-        self.dict_y_valid         = {}
-        self.output_dl_train_test_validation_origin     = {}
-        self.output_dl_inv_train_test_validation_origin = {}
-
-        for ii in range(len(self.target_keys)):
-            self.output_dl_train[self.target_keys[ii]]  = self.out_dl_predicted_train[:,ii]
-            self.output_dl_test[self.target_keys[ii]]   = self.out_dl_predicted_test[:,ii]
-            self.output_dl_valid[self.target_keys[ii]]  = self.out_dl_predicted_valid[:,ii]
-
-
-        self.output_dl_train_test_validation_origin['train']         = self.output_dl_train
-        self.output_dl_train_test_validation_origin['test']          = self.output_dl_test
-        self.output_dl_train_test_validation_origin['valid']         = self.output_dl_valid
-
-        self.output_dl_inv_train_test_validation_origin['train']     = self.output_dl_inv_train
-        self.output_dl_inv_train_test_validation_origin['test']      = self.output_dl_inv_test
-        self.output_dl_inv_train_test_validation_origin['valid']     = self.output_dl_inv_valid
-        
-        self.output_dl_flight    = {}
-        self.output_dl_flight_bn = {}
-        self.output_dl_inv_flight = {}
-        for test in self.list_tests[1:]:
-            self.output_dl_flight[test]     = {}
-            self.output_dl_flight_bn[test]  = {}
-            self.output_dl_inv_flight[test] = {}
-            
-        for test in self.list_tests[1:]:
-            for ii in range(len(self.target_keys)):
-                self.output_dl_flight[test][self.target_keys[ii]] = self.out_dl_predicted_flight[test][:,ii]
-            for ii in range(len(self.target_bn)):
-                self.output_dl_flight_bn[test][self.target_bn[ii]] = self.out_dl_predicted_flight_bn[test][:,ii]
-            for ii in self.target_keys:
-                self.output_dl_inv_flight[test][ii] = self.dict_scalery[ii].inverse_transform(self.output_dl_flight[test][ii].reshape(-1,1))
-                self.dict_y_flight[test][ii]        = self.dict_scalery[ii].inverse_transform(self.dict_y_flight_sc[test][ii].reshape(-1,1))
-
-        print('\n\nMAE and Explained Variance Calculation for Train Set')
-        print('-------------------------------------------------------------------------------------')
-        for ii in self.target_keys:
-            print(ii+" explained Variance of training set:", explained_variance_score(self.dict_y_sc['train'][ii], self.output_dl_train[ii].reshape(self.output_dl_train[ii].shape[0],1)))
-
-        print('\n\nMAE and Explained Variance Calculation for Test Set')
-        print('-------------------------------------------------------------------------------------')
-        for ii in self.target_keys:
-            print(ii+" explained Variance of test set:", explained_variance_score(self.dict_y_sc['test'][ii], self.output_dl_test[ii].reshape(self.output_dl_test[ii].shape[0],1)))
-
-        print('\n\nMAE and Explained Variance Calculation for Validation Set')
-        print('-------------------------------------------------------------------------------------')
-        for ii in self.target_keys:
-            print(ii+" explained Variance of validation set:", explained_variance_score(self.dict_y_sc['valid'][ii], self.output_dl_valid[ii].reshape(self.output_dl_valid[ii].shape[0],1)))
-    
-        # MAE and Explained Variance Calculations for Flight Sets - DL
-        print('\n\nMAE and Explained Variance Calculation for Flight Sets')
-        print('-------------------------------------------------------------------------------------')
-        for test in self.list_tests[1:]:
-            print('******************** ',test,' *****************************')
-            for ii in self.target_keys:
-                print(ii+" explained Variance of flight set:", explained_variance_score(self.dict_y_flight_sc[test][ii],
-                                                                                        self.output_dl_flight[test][ii].reshape(self.output_dl_flight[test][ii].shape[0],1)))
-        
-        self.out_dl_predicted_train_bn  = self.bottleneck_layer.predict(self.input_dl_train, batch_size=None)
-        self.out_dl_predicted_test_bn   = self.bottleneck_layer.predict(self.input_dl_test, batch_size=None)
-        self.out_dl_predicted_valid_bn  = self.bottleneck_layer.predict(self.input_dl_valid, batch_size=None)
-
-        self.output_dl_train_bn      = {}
-        self.output_dl_test_bn       = {}
-        self.output_dl_valid_bn      = {}
-        self.output_dl_inv_test_bn   = {}
-        self.output_dl_inv_valid_bn  = {}
-        self.output_dl_inv_train_bn  = {}
-        self.output_dl_train_test_validation_bn     = {}
-        self.output_dl_inv_train_test_validation_bn = {}
-
-        for ii in range(len(self.target_bn)):
-            self.output_dl_train_bn[self.target_bn[ii]]  = self.out_dl_predicted_train_bn[:,ii]
-            self.output_dl_test_bn[self.target_bn[ii]]   = self.out_dl_predicted_test_bn[:,ii]
-            self.output_dl_valid_bn[self.target_bn[ii]]  = self.out_dl_predicted_valid_bn[:,ii]
-
-        self.output_dl_train_test_validation_bn['train']    = self.output_dl_train_bn
-        self.output_dl_train_test_validation_bn['test']     = self.output_dl_test_bn
-        self.output_dl_train_test_validation_bn['valid']    = self.output_dl_valid_bn
-        
-        self.output_dl_train_test_valid = {}
-        for target in self.list_params:
-            self.output_dl_train_test_valid[target] = np.hstack((self.output_dl_train[target],self.output_dl_test[target],self.output_dl_valid[target]))
-
-
-        self.output_dl_train_test_valid_bn = {}
-        for target in self.target_bn:
-            self.output_dl_train_test_valid_bn[target] = np.hstack((self.output_dl_train_bn[target],self.output_dl_test_bn[target],self.output_dl_valid_bn[target]))
-
-    def plots(self,pnt_number=250,plot_train_test_valid=False):
+    def plots(self,pnt_number=250,plot_train=False,plot_test=False,plot_valid=False,plot_flight=False):
         self.pnt_number = pnt_number
-        if plot_train_test_valid:
-            print('************ PLOTS FOR TRAIN SET ****************\n')
-            for ii in range(len(self.target_keys)):
-                print(self.target_keys[ii])
-                mae = str(mean_absolute_error(self.output_dl_train[self.target_keys[ii]][:],(self.dict_y_sc['train'][self.target_keys[ii]])))
-                plt.figure(figsize=(26,9))
-                plt.plot(self.output_dl_train[self.target_keys[ii]][0:self.pnt_number], '--', markersize=1, label='Predicted', color = 'tab:red')
-                plt.plot((self.dict_y_sc['train'][self.target_keys[ii]][0:self.pnt_number,0]), '--', markersize=3, label='Actual', color = 'tab:blue')
-                plt.legend()
-                plt.xlabel('Sample Point')
-                plt.ylabel(self.target_keys[ii])
-                plt.title('Mae for '+self.target_keys[ii]+' Prediction for Training Set: ' + mae)
-                plt.grid()
-                plt.show()
-
-            print('************ PLOTS FOR TEST SET ****************\n')
-            for ii in range(len(self.target_keys)):
-                print(self.target_keys[ii])
-                mae = str(mean_absolute_error(self.output_dl_test[self.target_keys[ii]][:],(self.dict_y_sc['test'][self.target_keys[ii]])))
-                plt.figure(figsize=(26,9))
-                plt.plot(self.output_dl_test[self.target_keys[ii]][0:self.pnt_number], '--', markersize=1, label='Predicted', color = 'tab:red')
-                plt.plot((self.dict_y_sc['test'][self.target_keys[ii]][0:self.pnt_number,0]), '--', markersize=3, label='Actual', color = 'tab:blue')
-                plt.legend()
-                plt.xlabel('Sample Point')
-                plt.ylabel(self.target_keys[ii])
-                plt.title('Mae for '+self.target_keys[ii]+' Prediction for Test Set: ' + mae)
-                plt.grid()
-                plt.show()
-
-            print('************ PLOTS FOR VALIDATION SET ****************\n')
-            for ii in range(len(self.target_keys)):
-                print(self.target_keys[ii])
-                mae = str(mean_absolute_error(self.output_dl_valid[self.target_keys[ii]][:],(self.dict_y_sc['valid'][self.target_keys[ii]])))
-                plt.figure(figsize=(26,9))
-                plt.plot(self.output_dl_valid[self.target_keys[ii]][0:self.pnt_number], '--', markersize=1, label='Predicted', color = 'tab:red')
-                plt.plot((self.dict_y_sc['valid'][self.target_keys[ii]][0:self.pnt_number,0]), '--', markersize=3, label='Actual', color = 'tab:blue')
-                plt.legend()
-                plt.xlabel('Sample Point')
-                plt.ylabel(self.target_keys[ii])
-                plt.title('Mae for '+self.target_keys[ii]+' Prediction for Valid Set: ' + mae)
-                plt.grid()
-                plt.show()
-            
-        print('************ PLOTS FOR FLIGHT SET ****************\n')
-        for test in self.list_tests[1:]:
-            print(' ------------ ',test, ' --------------------')
-            for ii in range(len(self.target_keys)):
-                print(self.target_keys[ii])
-                mae = str(mean_absolute_error(self.output_dl_flight[test][self.target_keys[ii]][:],(self.dict_y_flight_sc[test][self.target_keys[ii]])))
-                plt.figure(figsize=(26,9))
-                plt.plot(self.output_dl_flight[test][self.target_keys[ii]][0:self.pnt_number], '--', markersize=1, label='Predicted', color = 'tab:red')
-                plt.plot((self.dict_y_flight_sc[test][self.target_keys[ii]][0:self.pnt_number,0]), '--', markersize=3, label='Actual', color = 'tab:blue')
-                plt.legend()
-                plt.xlabel('Sample Point')
-                plt.ylabel(self.target_keys[ii])
-                plt.title('Mae for '+self.target_keys[ii]+' Prediction for Flight Set: ' + mae)
-                plt.grid()
-                plt.show()
-        
-    def scatter_plot_for_bottleneck(self):
-        print('************ Scatter Plot for the BottleNeck Layer ****************\n')
-        for test in self.list_tests[1:]:
-            print('********** Scatter Plot for ',test, ' *********************************\n')
-            cntr = 1
-            for ii in range(len(self.target_bn)):
-                pnt_number = 180000
-                if ii == len(self.target_bn)-1:
-                    break
-                for jj in range(ii+1,len(self.target_bn)):
-                    fig = plt.figure(figsize=(26,9))
-                    plt.scatter(self.output_dl_flight_bn[test][self.target_bn[ii]][0:],self.output_dl_flight_bn[test][self.target_bn[jj]][0:],label='Flight')
-                    plt.scatter(self.output_dl_train_bn[self.target_bn[ii]][0:],self.output_dl_train_bn[self.target_bn[jj]][0:],label='Train')
-                    plt.scatter(self.output_dl_test_bn[self.target_bn[ii]][0:],self.output_dl_test_bn[self.target_bn[jj]][0:],label='Test')
-                    plt.scatter(self.output_dl_valid_bn[self.target_bn[ii]][0:],self.output_dl_valid_bn[self.target_bn[jj]][0:],label='Valid')
+        self.plot_list  = {'train'  :plot_train,
+                           'test'   :plot_test,
+                           'valid'  :plot_valid,
+                           'flight' :plot_flight}
+        for data in self.list_split_through:
+            if data == 'flight':
+                self.pnt_number = -1
+            if self.plot_list[data]:
+                print('\nPlot for %s set\n' % (data))
+                for param in self.list_params:
+                    print(param)
+                    plt.figure(figsize=(26,9))
+                    plt.plot(self.out_dl_predicted[data][param]['scaled'][0:self.pnt_number],'--',markersize=1,label='predicted',color='tab:red')
+                    plt.plot(self.dict_y_sc[data][param][0:self.pnt_number],'--', markersize=1, label='actual', color = 'tab:blue')
                     plt.legend()
-                    plt.xlabel(self.target_bn[ii])
-                    plt.ylabel(self.target_bn[jj])
+                    plt.xlabel('sample point')
+                    plt.ylabel(param)
+                    plt.title('explained variance score for the %s set for %s is: ' % (data,param))
                     plt.grid()
-                    #plt.xlim((-5.0,+5.0))
-                   # plt.ylim((-10.0,+10.0))
                     plt.show()
-                    fig.savefig('./images/bottleneck_'+str(cntr))
-                    cntr = cntr + 1
-        
-    def histogram_for_bottleneck(self):
-        for test in self.list_tests[1:]:
-            print('*************** ',test, ' *******************************************\n')
-            print('************ Histogram Plot for the BottleNeck Layer ****************\n')
-            for ii in range(len(self.target_bn)):
-                fig = plt.figure(figsize=(26,9))
-                plt.hist(self.output_dl_train_bn[self.target_bn[ii]][0:],label='Trained',bins=100,color='tab:blue')
-                plt.hist(self.output_dl_flight_bn[test][self.target_bn[ii]][0:],label='Flight',bins=100,color='tab:red')
-                plt.legend()
-                plt.xlabel(self.target_bn[ii])
-                plt.grid()
-                plt.xlim((-1.0,+1.0))
-                plt.show()
-                fig.savefig('./images/bottleneck_hist_'+str(ii))
-                print("*******************************************************************************************************************")
-                print("*******************************************************************************************************************")
+
+    def scatter_plot_for_bottleneck(self):
+        for value1,key1 in enumerate(self.target_bn):
+            if key1 == self.target_bn[-1]:
+                break
+            else:
+                for key2 in self.target_bn[value1+1:]:
+                    if key1 == key2:
+                        continue
+                    else:
+                        fig = plt.figure(figsize=(26,9))
+                        for data in self.list_split_through:
+                            plt.scatter(self.out_dl_predicted_bottleneck[data][key1]['scaled'],self.out_dl_predicted_bottleneck[data][key2]['scaled'],label=data)
+                            plt.legend()
+                            plt.xlabel(key1)
+                            plt.ylabel(key2)
+                            plt.grid()
+                        plt.show()
+                        #fig.savefig('./images/scatterplot_bottleneck_')
             
-    def mae(self):
-        # Error for Training Data
-        self.mae_for_training = {}
-        for ii in self.target_keys:
-            self.mae_for_training[ii] = np.zeros((self.output_dl_train[ii].shape[0],1))
-
-        for ii in range(len(self.target_keys)):
-            for jj in range(len(self.output_dl_train[self.target_keys[ii]])):
-                self.mae_for_training[self.target_keys[ii]][jj,0] = self.output_dl_train[self.target_keys[ii]][jj]- self.dict_y_sc['train'][self.target_keys[ii]][jj,0]
-
-        # Error for Test Data
-        self.mae_for_test = {}
-        for ii in self.target_keys:
-            self.mae_for_test[ii] = np.zeros((self.output_dl_test[ii].shape[0],1))
-
-        for ii in range(len(self.target_keys)):
-            for jj in range(len(self.output_dl_test[self.target_keys[ii]])):
-                self.mae_for_test[self.target_keys[ii]][jj,0] = self.output_dl_test[self.target_keys[ii]][jj]- self.dict_y_sc['test'][self.target_keys[ii]][jj,0]
-
-        # Error for Validation Data
-        self.mae_for_valid = {}
-        for ii in self.target_keys:
-            self.mae_for_valid[ii] = np.zeros((self.output_dl_valid[ii].shape[0],1))
-
-        for ii in range(len(self.target_keys)):
-            for jj in range(len(self.output_dl_valid[self.target_keys[ii]])):
-                self.mae_for_valid[self.target_keys[ii]][jj,0] = self.output_dl_valid[self.target_keys[ii]][jj]- self.dict_y_sc['valid'][self.target_keys[ii]][jj,0]
-
-        # Error for Flight Data
-        self.mae_for_flight = {}
-        for test in self.list_tests[1:]:
-            self.mae_for_flight[test] = {}
+    def __mae__(self):
+        self.mae = {}
+        for data in self.list_split_through:
+            self.mae[data] = {param:np.zeros((self.out_dl_predicted[data][param]['scaled'].shape[0],1)) for param in self.list_params}
         
-        for test in self.list_tests[1:]:
-            for ii in self.target_keys:
-                self.mae_for_flight[test][ii] = np.zeros((self.output_dl_flight[test][ii].shape[0],1))
-
-            for ii in range(len(self.target_keys)):
-                for jj in range(len(self.output_dl_flight[test][self.target_keys[ii]])):
-                    self.mae_for_flight[test][self.target_keys[ii]][jj,0] = self.output_dl_flight[test][self.target_keys[ii]][jj]- self.dict_y_flight_sc[test][self.target_keys[ii]][jj,0]
+        for data in self.list_split_through:
+            for param in self.list_params:
+                self.mae[data][param] = self.out_dl_predicted[data][param]['scaled'].reshape(-1,1) - self.dict_y_sc[data][param]
+       
                 
     def histogram_mae(self):
-        for test in self.list_tests[1:]:
-            print('*************** ',test, ' *******************************************\n')
-            print('************ Histogram Plot for Mae ****************\n')
-            for ii in range(len(self.target_keys)):
+        self.__mae__()
+        for param in self.list_params:
+            print('************ Histogram Plot of Mae for %s set****************\n' % (self.list_split_through))
+            for value,data in enumerate(self.list_split_through):
                 fig = plt.figure(figsize=(25,36))
-                plt.subplot(411)
-                plt.hist(self.mae_for_training[self.target_keys[ii]],label='Training',bins=500)
+                plt.subplot(411+value)
+                plt.hist(self.mae[data][param],label='%s for %s set' %(param,data),bins=500)
                 plt.legend()
-                plt.xlabel(self.target_keys[ii])
+                plt.xlabel(param)
                 plt.grid()
                 plt.xlim((-0.50,+0.50))
-
-                plt.subplot(412)
-                plt.hist(self.mae_for_test[self.target_keys[ii]],label='Test',bins=500)
-                plt.legend()
-                plt.xlabel(self.target_keys[ii])
-                plt.grid()
-                plt.xlim((-0.50,+0.50))
-
-                plt.subplot(413)
-                plt.hist(self.mae_for_valid[self.target_keys[ii]],label='Validation',bins=500)
-                plt.legend()
-                plt.xlabel(self.target_keys[ii])
-                plt.grid()
-                plt.xlim((-0.50,+0.50))
-
-                plt.subplot(414)
-                plt.hist(self.mae_for_flight[test][self.target_keys[ii]],label='Flight',bins=500)
-                plt.legend()
-                plt.xlabel(self.target_keys[ii])
-                plt.grid()
-                plt.xlim((-0.50,+0.50))
-                plt.show()
-                fig.savefig('./images/error_hist'+self.target_keys[ii])
-                print("*******************************************************************************************************************")
-                print("*******************************************************************************************************************")
+            plt.show()
+            #fig.savefig('./images/error_hist'+self.target_keys[ii])
+            print("*******************************************************************************************************************")
+            print("*******************************************************************************************************************")
                 
     def corr(self):
         # Pearson Correlation
-        print('Pearson Correlation is Calculated for the features and targets at the bottleneck\n')
+        self.covariance  = {}
+        self.sigma       = {}
+        self.correlation = {}
+
+        for data in self.list_split_through:
+            self.covariance[data]  = {}
+            self.sigma[data]       = {}
+            self.correlation[data] = {}
         
-        self.results_bn       = {}
-        for test in self.list_tests:
-            self.results_bn[test] = {}
-            
-        for param in self.target_bn:
-            self.results_bn['test1'][param] = self.output_dl_train_bn[param][0:]
-            for test in self.list_tests[1:]:
-                self.results_bn[test][param] = self.output_dl_flight_bn[test][param][0:]
-            
-        self.Covariance_all   = {}
-        for param in self.target_bn:
-            self.Covariance_all[param]  = {}   
+        for data in self.list_split_through:
+            for dim in self.target_bn:
+                self.covariance[data][dim]  = {}
+                self.correlation[data][dim] = {}
 
-        for param in self.target_bn:
-            for test in self.list_tests:
-                self.Covariance_all[param][test] = {}
-    
-        for param in self.target_bn:
-            for test1 in self.list_tests:
-                 for test2 in self.list_tests:
-                    self.Covariance_all[param][test1][test2] = covar(self.results_bn[test1][param],self.results_bn[test2][param])
-        
-        self.sigma_all   = {}
-        for param in self.target_bn:
-            self.sigma_all[param]  = {}
-
-        for param in self.target_bn:
-            for test in self.list_tests:
-                self.sigma_all[param][test] = sigma(self.results_bn[test][param])
-
-        self.Corr = {}
-        for param in self.target_bn:
-            self.Corr[param]  = {}
-
-        for param in self.target_bn:
-            for test in self.list_tests:
-                self.Corr[param][test] = {}
-
-        for param in self.target_bn:
-            for test1 in self.list_tests:
-                for test2 in self.list_tests:
-                    self.Corr[param][test1][test2] = self.Covariance_all[param][test1][test2] / (self.sigma_all[param][test1]*self.sigma_all[param][test2])
-                    
-        # Scaler Plot for the Correlations of Targets with Features
-        for param in self.target_bn:
-            print('\nCorrelation Coefficient for %s for different Test Data' % (param))
-            plt.figure(figsize=(26,9))
-            plt.scatter(np.arange(len(self.Corr[param]['test2'])-1),[self.Corr[param]['test2'][test] for test in self.list_tests[1:]],label=  param+'_vs_'+param)
-            plt.legend()
-            plt.xlabel([[test for test in self.list_tests[1:]]])
-            plt.ylabel(param)
-            plt.title('Correlation for %s obtained from the prediction of bottle neck of AutoEncoder' % ([test for test in self.list_tests[1:]]))
-            plt.grid()
-            plt.show()
-              
-    def mahal(self,u,v,str1,str2,scatter_plot=False,histogram_plot=False):
-        for key in u.keys():
-            mahal = mahalanobis(v[key].reshape(1,v[key].shape[0]),u[key].reshape(1,u[key].shape[0]))
-            if scatter_plot:
+        for data in self.list_split_through:
+            for dim1 in self.target_bn:
+                self.sigma[data][dim1] = sigma(self.out_dl_predicted_bottleneck[data][dim1]['scaled'])
+                for dim2 in self.target_bn:
+                    self.sigma[data][dim2] = sigma(self.out_dl_predicted_bottleneck[data][dim2]['scaled'])
+                    self.covariance[data][dim1][dim2]  = covar(self.out_dl_predicted_bottleneck[data][dim1]['scaled'],self.out_dl_predicted_bottleneck[data][dim2]['scaled'])
+                    self.correlation[data][dim1][dim2] = self.covariance[data][dim1][dim2] / (self.sigma[data][dim1] * self.sigma[data][dim2])
+   
+        # Scaler Plot for the Correlations of Dimensions Obtained in Bottleneck
+        for data in self.list_split_through:
+            print('\nCorrelation Coefficient for %s data' % (data))
+            for dim1 in self.target_bn:
                 plt.figure(figsize=(26,9))
-                plt.scatter(np.arange(mahal.diagonal().shape[0]),mahal.diagonal(),
-                            label='Mahalanobis Distance of %s wrt %s' % (str1,str2))
+                plt.scatter(np.arange(len(self.correlation[data][dim1])),[self.correlation[data][dim1][dim] for dim in self.target_bn], label= 'correlation for %s' % (dim1))
                 plt.legend()
-                plt.xlabel(key)
+                plt.xlabel([dim for dim in self.target_bn])
+                plt.ylabel(dim1)
+                plt.title('Correlation for %s obtained from the prediction of bottleneck of AutoEncoder' % (dim1))
                 plt.grid()
                 plt.show()
-            if histogram_plot:
-                plt.figure(figsize=(26,9))
-                plt.hist(mahal.diagonal(),label='Mahalanobis Distance of %s wrt %s' % (str1,str2),
-                        bins=100)
+
+    def mean_distance(self):
+        print('Mean Distance for the bottleneck dimensions')
+        self.shuffling = {}
+        self.mean_dist = {}
+        self.mean      = {}
+        self.sigma     = {}
+
+        for data in self.list_split_through:
+            self.shuffling[data] = np.random.permutation(np.arange(self.out_dl_predicted_bottleneck[data][self.target_bn[0]]['scaled'].shape[0]))
+            self.mean_dist[data] = {}
+            self.mean[data]      = {}
+            self.sigma[data]     = {}
+
+        for data in self.list_split_through:
+            for dim in self.target_bn:
+                self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled'] = self.out_dl_predicted_bottleneck[data][dim]['scaled'][self.shuffling[data]]
+            for param in self.list_params:
+                self.out_dl_predicted[data][param]['scaled_shuffled']          = self.out_dl_predicted[data][param]['scaled'][self.shuffling[data]]
+                self.out_dl_predicted[data][param]['inverse_shuffled']         = self.out_dl_predicted[data][param]['inverse'][self.shuffling[data]]
+                self.out_dl_predicted[data][param]['scaled_shuffled_outlier']  = []
+                self.out_dl_predicted[data][param]['inverse_shuffled_outlier'] = []
+
+        for data in self.list_split_through:
+            for dim in self.target_bn:
+                self.sigma[data][dim] = {'original' : np.std(self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled'])}
+                self.mean[data][dim]  = {'original' : np.mean(self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled'])}
+
+        for dim in self.target_bn:
+            for data1 in self.list_split_through:
+                self.out_dl_predicted_bottleneck[data1][dim]['ztransformed'] = {data2 : (self.out_dl_predicted_bottleneck[data1][dim]['scaled_shuffled'] - \
+                                                                                         self.mean[data2][dim]['original'])/self.sigma[data2][dim]['original'] for data2 in self.list_split_through}
+
+        for dim in self.target_bn:
+            for data1 in self.list_split_through:
+                self.sigma[data1][dim]['ztransformed'] = {data2 : np.std(self.out_dl_predicted_bottleneck[data1][dim]['ztransformed'][data2]) for data2 in self.list_split_through}
+                self.mean[data1][dim]['ztransformed']  = {data2 : np.mean(self.out_dl_predicted_bottleneck[data1][dim]['ztransformed'][data2]) for data2 in self.list_split_through}
+        
+        for data in self.list_split_through:
+            for dim in self.target_bn:
+                self.mean_dist[data][dim] = {'all_data'        :np.abs(self.out_dl_predicted_bottleneck[data][dim]['ztransformed']['train'] - self.mean['train'][dim]['ztransformed']['train']),
+                                             'outlier_indices' :np.where(np.abs(self.out_dl_predicted_bottleneck[data][dim]['ztransformed']['train'] - self.mean['train'][dim]['ztransformed']['train']) > \
+                                                                (self.mean['train'][dim]['ztransformed']['train']+3*self.sigma['train'][dim]['ztransformed']['train']))}
+
+        for data in self.list_split_through:
+            for dim in self.target_bn:
+                self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled_outlier']   = self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled']\
+                                                                                           [self.mean_dist[data][dim]['outlier_indices'][0]]
+
+        for data in self.list_split_through:
+            for param in self.list_params:
+                for dim in self.target_bn:
+                    for datum in self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled_outlier']:
+                        self.out_dl_predicted[data][param]['scaled_shuffled_outlier'].append(datum) 
+
+        # Scatter Plot for the Mean Distance
+        for data in self.list_split_through:
+            for dim in self.target_bn:
+                fig = plt.figure(figsize=(26,9))
+                plt.scatter(np.arange(self.out_dl_predicted_bottleneck[data][dim]['scaled'].shape[0]), 
+                            self.mean_dist[data][dim]['all_data'], 
+                            label='%s vs train for %s' % (data,dim))
+                plt.scatter(np.arange(self.out_dl_predicted_bottleneck[data][dim]['scaled'].shape[0]), 
+                            np.ones((self.out_dl_predicted_bottleneck[data][dim]['scaled'].shape[0],1)) * \
+                            (self.mean['train'][dim]['ztransformed']['train']+3*self.sigma['train'][dim]['ztransformed']['train']), 
+                            label='3 sigma distance from the mean of %s of the train data' % (dim))
                 plt.legend()
-                plt.xlabel(key)
+                plt.xlabel('data')
+                plt.ylabel('distance between ztransformed %s of %s data according to train data' % (dim,data))
                 plt.grid()
                 plt.show()
-#         fig.savefig('./images/mahalanobis_'+kk)
-    
+
     def writeStandartScaler_AsMatFile(self,scaler,fileName,keys):
         if os.path.exists('./MatFiles/')==False:
             os.makedirs('./MatFiles/')

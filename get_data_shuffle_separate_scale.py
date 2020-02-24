@@ -2,177 +2,197 @@
 
 from import_modules import *
 
-def get_data_for_training(datF,target_output,features_input,sclr,shuffle=True):
-    print('DATA SET PREPARATON FOR TRAINING, TESTING AND VALIDATION\n')
-    print('\n****************************************************************************')
-    number_of_data              = int(datF.describe()[datF.columns[0]]['count'])
-    print('\nnumber of data     =',number_of_data)
-    
-#######################################################################################        
-    ########## PREPARE FEATURE INPUTS ###############
-    dict_x_origin               = {}
-    
-    for keys in features_input:
-        dict_x_origin[keys] = datF[keys].values
+class split_data:
+    def __init__(self,training_data,features_input,target_output,scaler,
+                 test_data_isexist=False,shuffle=True):
+
+        self.training_data     = training_data
+        self.features_input    = features_input
+        self.target_output     = target_output
+        self.scaler            = scaler
+        self.test_data_isexist = test_data_isexist
+        self.shuffle           = shuffle
+
+    def split_training_data(self):
+        print('DATA SET PREPARATON FOR TRAINING, TESTING AND VALIDATION\n')
+        number_of_data              = int(self.training_data.describe()[self.training_data.columns[0]]['count'])
+        print('\nnumber of data     =',number_of_data)
         
-    print('input_features     =',features_input)
-    print('\n****************************************************************************')
-    
-#######################################################################################        
-    ########## PREPARE TARGET OUTPUTS ###############
-    dict_y_origin = {}
-    for keys in target_output:
-        dict_y_origin[keys] =  datF[keys].values
-
-    print('target_output      =',target_output)
-    print('\n****************************************************************************')
-    
-#######################################################################################
-    ########### SPLIT THE WHOLE DATA TO TRAIN - TEST - VALIDATION SETS ###############
-    ####### 1st Seperate the Validation data from the whole data set ######## 
-    indices1          = np.arange(number_of_data)
-    split1            = train_test_split(indices1, test_size = 0.10, random_state=1038, shuffle=shuffle)
-    indices1_train_test, indices1_valid = split1
-    dict_x_train_test = {}
-    dict_x_valid      = {}
-    dict_y_train_test = {}
-    dict_y_valid      = {}
-    print('\nSPLITTING THE WHOLE DATA TO TRAIN-TEST AND VALIDATION SETS')
-    for key in features_input:
-        dict_x_train_test[key] = dict_x_origin[key][indices1_train_test].reshape((-1,1))
-        dict_x_valid[key]      = dict_x_origin[key][indices1_valid].reshape((-1,1))
-    for key in target_output:
-        dict_y_train_test[key] = dict_y_origin[key][indices1_train_test].reshape((-1,1))
-        dict_y_valid[key]      = dict_y_origin[key][indices1_valid].reshape((-1,1))
-    print('Done!')
-    print('\n****************************************************************************')
-    #########################################################################
-    ####### 2nd Split the train_test data sets into train and test ##########
-    split2       = train_test_split(indices1_train_test, test_size = 0.10, random_state=2761, shuffle=True)
-    indices2_train, indices2_test = split2
-    dict_x_train = {}
-    dict_x_test  = {}
-    dict_y_train = {}
-    dict_y_test  = {}
-    print('\nSPLITTING THE TRAIN-TEST DATA TO TRAIN AND TEST SETS')
-    print('Done!')
-    print('\n****************************************************************************')
-    for key in features_input:
-        dict_x_train[key] = dict_x_origin[key][indices2_train].reshape((-1,1))
-        dict_x_test[key]  = dict_x_origin[key][indices2_test].reshape((-1,1))
-    for key in target_output:
-        dict_y_train[key] = dict_y_origin[key][indices2_train].reshape((-1,1))
-        dict_y_test[key]  = dict_y_origin[key][indices2_test].reshape((-1,1))
-    print('\nPRINTING TRAIN, TEST AND VALIDATION SETS')
-    print('\n ***Input Features***') 
-    for key in features_input:
-        print('-----------------------------------------------')
-        print('input features are       : ',key)
-        print('train set shape for',key,'is          :' ,dict_x_train[key].shape)
-        print('test set shape for',key,'is           :' ,dict_x_test[key].shape)
-        print('validation set shape for',key,'is     :' ,dict_x_valid[key].shape)
-    print('\n ***Output Targets***')    
-    for key in target_output:
-        print('-----------------------------------------------')
-        print(key,'label shape for train_set is      :', dict_y_train[key].shape)
-        print(key,'label shape for test_set is       :', dict_y_test[key].shape)
-        print(key,'label shape for validation_set is :', dict_y_valid[key].shape)
-    print('\n****************************************************************************')
-# #######################################################################################        
-    ###################### SCALING ###############################
-    dict_scalerx    = {}
-    dict_x_train_sc = {}
-    dict_x_test_sc  = {}
-    dict_x_valid_sc = {}
-    for key in features_input:
-        if sclr == 'minmax':
-            scalerx = MinMaxScaler((-0.5,0.5))
-        elif sclr == 'robust':
-            scalerx = RobustScaler()
-        elif sclr == 'standard':
-            scalerx = StandardScaler()
-
-        scx                  = scalerx.fit(dict_x_train[key])
-        dict_x_train_sc[key] = scx.transform(dict_x_train[key])
-        dict_x_test_sc[key]  = scx.transform(dict_x_test[key])
-        dict_x_valid_sc[key] = scx.transform(dict_x_valid[key])
-        dict_scalerx[key]    = scx
-    list_x_train_test_valid_sc   = [dict_x_train_sc,dict_x_test_sc,dict_x_valid_sc]
-    
-    dict_scalery    = {}
-    dict_y_train_sc = {}
-    dict_y_test_sc  = {}
-    dict_y_valid_sc = {}
-    for key in target_output:
-        if sclr == 'minmax':
-            scalery = MinMaxScaler((-0.5,0.5))
-        elif sclr == 'robust':
-            scalery = RobustScaler()
-        elif sclr == 'standard':
-            scalery = StandardScaler()
+        ########## PREPARE FEATURE INPUTS ###############
+        self.dict_x_origin               = {}
         
-        scy                  = scalery.fit(dict_y_train[key])
-        dict_y_train_sc[key] = scy.transform(dict_y_train[key])
-        dict_y_test_sc[key]  = scy.transform(dict_y_test[key])
-        dict_y_valid_sc[key] = scy.transform(dict_y_valid[key])
-        dict_scalery[key]    = scy
-    list_y_train_test_valid_sc   = [dict_y_train_sc,dict_y_test_sc,dict_y_valid_sc]
-#######################################################################################
-    return list_x_train_test_valid_sc, list_y_train_test_valid_sc, dict_scalerx, dict_scalery
+        for key in self.features_input:
+            self.dict_x_origin[key] = self.training_data[key].values
+            
+        print('input_features     =', self.features_input)
 
+        ########## PREPARE TARGET OUTPUTS ###############
+        self.dict_y_origin = {}
+        for key in self.target_output:
+            self.dict_y_origin[key] =  self.training_data[key].values
 
-def get_data_for_testing(datF,target_output,features_input,dict_scalerx,dict_scalery):
-    print('DATA SET PREPARATON FOR TRAINING, TESTING AND VALIDATION\n')
-    print('\n****************************************************************************')
-    number_of_data              = int(datF.describe()[datF.columns[0]]['count'])
-    print('\nnumber of data     =',number_of_data)
-    
-#######################################################################################        
-    ########## PREPARE FEATURE INPUTS ###############
-    dict_x_origin               = {}
-    
-    for keys in features_input:
-        dict_x_origin[keys] = datF[keys].values
+        print('\ntarget_output      =', self.target_output)
         
-    print('input_features     =',features_input)
-    print('\n****************************************************************************')
-    
-#######################################################################################        
-    ########## PREPARE TARGET OUTPUTS ###############
-    dict_y_origin = {}
-    for keys in target_output:
-        dict_y_origin[keys] =  datF[keys].values
+        ########### SPLIT THE WHOLE DATA TO TRAIN - TEST - VALIDATION SETS ###############
+        ####### 1st Seperate the Validation data from the whole data set ######## 
+        indices1          = np.arange(number_of_data)
+        split1            = train_test_split(indices1, test_size = 0.10, random_state=1038, shuffle=self.shuffle)
+        indices1_train_test, indices1_valid = split1
+        self.dict_x_train_test = {}
+        self.dict_x_valid      = {}
+        self.dict_y_train_test = {}
+        self.dict_y_valid      = {}
+        print('\nSPLITTING THE WHOLE DATA TO TRAIN-TEST AND VALIDATION SETS')
+        for key in self.features_input:
+            self.dict_x_train_test[key] = self.dict_x_origin[key][indices1_train_test].reshape((-1,1))
+            self.dict_x_valid[key]      = self.dict_x_origin[key][indices1_valid].reshape((-1,1))
+        for key in self.target_output:
+            self.dict_y_train_test[key] = self.dict_y_origin[key][indices1_train_test].reshape((-1,1))
+            self.dict_y_valid[key]      = self.dict_y_origin[key][indices1_valid].reshape((-1,1))
+        print('\nDone!')
+        #########################################################################
+        ####### 2nd Split the train_test data sets into train and test ##########
+        split2       = train_test_split(indices1_train_test, test_size = 0.10, random_state=2761, shuffle=True)
+        indices2_train, indices2_test = split2
+        self.dict_x_train = {}
+        self.dict_x_test  = {}
+        self.dict_y_train = {}
+        self.dict_y_test  = {}
+        print('\nSPLITTING THE TRAIN-TEST DATA TO TRAIN AND TEST SETS')
+        for key in self.features_input:
+            self.dict_x_train[key] = self.dict_x_origin[key][indices2_train].reshape((-1,1))
+            self.dict_x_test[key]  = self.dict_x_origin[key][indices2_test].reshape((-1,1))
+        for key in self.target_output:
+            self.dict_y_train[key] = self.dict_y_origin[key][indices2_train].reshape((-1,1))
+            self.dict_y_test[key]  = self.dict_y_origin[key][indices2_test].reshape((-1,1))
+        print('\nDone')
+        print('\nPRINTING TRAIN, TEST AND VALIDATION SETS')
+        print('\n ***Input Features***\n') 
+        for key in self.features_input:
+            print('-----------------------------------------------')
+            print('input features are       : ',key)
+            print('train set shape for',key,'is          :' ,self.dict_x_train[key].shape)
+            print('test set shape for',key,'is           :' ,self.dict_x_test[key].shape)
+            print('validation set shape for',key,'is     :' ,self.dict_x_valid[key].shape)
+        print('\n ***Output Targets***')    
+        for key in self.target_output:
+            print('-----------------------------------------------')
+            print(key,'label shape for train_set is      :', self.dict_y_train[key].shape)
+            print(key,'label shape for test_set is       :', self.dict_y_test[key].shape)
+            print(key,'label shape for validation_set is :', self.dict_y_valid[key].shape)
+        print('\n****************************************************************************\n')
 
-    print('target_output      =',target_output)
-    print('\n****************************************************************************')
+        self.dict_x = {}
+        self.dict_y = {}
+        for key in ['train','test','valid']:
+            self.dict_x[key] = {}
+            self.dict_y[key] = {}
+        self.dict_x['train'] = self.dict_x_train
+        self.dict_x['test']  = self.dict_x_test
+        self.dict_x['valid'] = self.dict_x_valid
+        self.dict_y['train'] = self.dict_y_train
+        self.dict_y['test']  = self.dict_y_test
+        self.dict_y['valid'] = self.dict_y_valid
+
+        ###################### SCALING input ###############################
+        self.dict_scalerx    = {}
+        self.dict_x_train_sc = {}
+        self.dict_x_test_sc  = {}
+        self.dict_x_valid_sc = {}
+        for key in self.features_input:
+            if self.scaler == 'minmax':
+                scalerx = MinMaxScaler((-0.5,0.5))
+            elif self.scaler == 'robust':
+                scalerx = RobustScaler()
+            elif self.scaler == 'standard':
+                scalerx = StandardScaler()
+
+            scx                       = scalerx.fit(self.dict_x_train[key])
+            self.dict_x_train_sc[key] = scx.transform(self.dict_x_train[key])
+            self.dict_x_test_sc[key]  = scx.transform(self.dict_x_test[key])
+            self.dict_x_valid_sc[key] = scx.transform(self.dict_x_valid[key])
+            self.dict_scalerx[key]    = scx
+        ###################### SCALING output ###############################
+        self.dict_scalery    = {}
+        self.dict_y_train_sc = {}
+        self.dict_y_test_sc  = {}
+        self.dict_y_valid_sc = {}
+        for key in self.target_output:
+            if self.scaler == 'minmax':
+                scalery = MinMaxScaler((-0.5,0.5))
+            elif self.scaler == 'robust':
+                scalery = RobustScaler()
+            elif self.scaler == 'standard':
+                scalery = StandardScaler()
+            
+            scy                       = scalery.fit(self.dict_y_train[key])
+            self.dict_y_train_sc[key] = scy.transform(self.dict_y_train[key])
+            self.dict_y_test_sc[key]  = scy.transform(self.dict_y_test[key])
+            self.dict_y_valid_sc[key] = scy.transform(self.dict_y_valid[key])
+            self.dict_scalery[key]    = scy
+
+        self.dict_x_sc = {}
+        self.dict_y_sc = {}
+        for key in ['train','test','valid']:
+            self.dict_x_sc[key] = {}
+            self.dict_x_sc[key] = {}
+        self.dict_x_sc['train'] = self.dict_x_train_sc
+        self.dict_x_sc['test']  = self.dict_x_test_sc
+        self.dict_x_sc['valid'] = self.dict_x_valid_sc
+        self.dict_y_sc['train'] = self.dict_y_train_sc
+        self.dict_y_sc['test']  = self.dict_y_test_sc
+        self.dict_y_sc['valid'] = self.dict_y_valid_sc
     
-#######################################################################################
-    ########### SPLIT THE WHOLE DATA TO TRAIN - TEST - VALIDATION SETS ###############
-    ####### 1st Seperate the Validation data from the whole data set ######## 
-    dict_x_flight     = {}
-    dict_y_flight     = {}
-    print('\nSPLITTING THE WHOLE DATA TO TRAIN-TEST AND VALIDATION SETS')
-    for key in features_input:
-        dict_x_flight[key] = dict_x_origin[key].reshape((-1,1))
-    for key in target_output:
-        dict_y_flight[key] = dict_y_origin[key].reshape((-1,1))
-    print('Done!')
-    print('\n****************************************************************************')
-# #######################################################################################        
-    ###################### SCALING ###############################
-    dict_x_flight_sc = {}
-    dict_y_flight_sc = {}
-    for key in features_input:
-        scx                  = dict_scalerx[key]
-        dict_x_flight_sc[key] = scx.transform(dict_x_flight[key])
+    def split_test_data(self,test_data):
+        print('\n Test data will be named as Flight Data from this point\n')
+        self.test_data = test_data
+        print('DATA SET PREPARATON FOR TRAINING, TESTING AND VALIDATION\n')
+        number_of_data              = int(self.test_data.describe()[self.test_data.columns[0]]['count'])
+        print('\nnumber of data     =',number_of_data)
         
-    list_x_flight_sc   = [dict_x_flight_sc]
-    
-    dict_y_flight_sc = {}
-    for key in target_output:
-        scy                   = dict_scalery[key]
-        dict_y_flight_sc[key] = scy.transform(dict_y_flight[key])
- 
-    list_y_flight_sc   = [dict_y_flight_sc]
-#######################################################################################
-    return list_x_flight_sc, list_y_flight_sc
+    #######################################################################################        
+        ########## PREPARE FEATURE INPUTS ###############
+        self.dict_x_flight_origin               = {}
+        
+        for key in self.features_input:
+            self.dict_x_flight_origin[key] = self.test_data[key].values
+            
+        print('input_features     =',self.features_input)
+        print('\n')
+        
+    #######################################################################################        
+        ########## PREPARE TARGET OUTPUTS ###############
+        self.dict_y_flight_origin = {}
+        for key in self.target_output:
+            self.dict_y_flight_origin[key] =  self.test_data[key].values
+
+        print('target_output      =',self.target_output)
+        print('\n')
+        
+        ########### SPLIT THE WHOLE DATA TO TRAIN - TEST - VALIDATION SETS ###############
+        ####### 1st Seperate the Validation data from the whole data set ######## 
+        self.dict_x_flight     = {}
+        self.dict_y_flight     = {}
+        print('\nSPLITTING THE WHOLE DATA TO TRAIN-TEST AND VALIDATION SETS')
+        for key in self.features_input:
+            self.dict_x_flight[key] = self.dict_x_flight_origin[key].reshape((-1,1))
+        for key in self.target_output:
+            self.dict_y_flight[key] = self.dict_y_flight_origin[key].reshape((-1,1))
+        print('Done!')
+        print('\n')
+        ###################### SCALING ###############################
+        self.dict_x_flight_sc = {}
+        self.dict_y_flight_sc = {}
+        for key in self.features_input:
+            self.dict_x_flight_sc[key] = self.dict_scalerx[key].transform(self.dict_x_flight[key])
+                    
+        self.dict_y_flight_sc = {}
+        for key in self.target_output:
+            self.dict_y_flight_sc[key] = self.dict_scalery[key].transform(self.dict_y_flight[key])
+
+        self.dict_x['flight']    = self.dict_x_flight
+        self.dict_x_sc['flight'] = self.dict_x_flight_sc
+        self.dict_y['flight']    = self.dict_y_flight
+        self.dict_y_sc['flight'] = self.dict_y_flight_sc
+    #######################################################################################
+        

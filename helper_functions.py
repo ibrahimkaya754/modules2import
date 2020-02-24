@@ -46,7 +46,7 @@ def corr(data,parameters=False,datasets=False):
         
         if datasets:
             # Pearson Correlation for the data sets. The same parameters are investigated
-            print('Pearson Correlation is Calculated for the data sets (test1 to test5) for the same parameters')
+            print('Pearson Correlation is Calculated for the data sets (%s to %s) for the same parameters' % (list_tests_[0],list_tests_[-1]))
             Covariance_all   = {}
             for param in list_params_:
                 Covariance_all[param]  = {}   
