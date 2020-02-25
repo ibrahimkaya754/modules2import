@@ -237,8 +237,7 @@ class model(prepare_inputs):
         for data in self.list_split_through:
             for param in self.list_params:
                 self.mae[data][param] = self.out_dl_predicted[data][param]['scaled'].reshape(-1,1) - self.dict_y_sc[data][param]
-       
-                
+          
     def histogram_mae(self):
         self.__mae__()
         for param in self.list_params:
@@ -314,6 +313,7 @@ class model(prepare_inputs):
                 self.out_dl_predicted[data][param]['inverse_shuffled']         = self.out_dl_predicted[data][param]['inverse'][self.shuffling[data]]
                 self.out_dl_predicted[data][param]['scaled_shuffled_outlier']  = []
                 self.out_dl_predicted[data][param]['inverse_shuffled_outlier'] = []
+                self.out_dl_predicted[data][param]['scaled_outlier']           = []
 
         for data in self.list_split_through:
             for dim in self.target_bn:
@@ -330,6 +330,9 @@ class model(prepare_inputs):
                 self.sigma[data1][dim]['ztransformed'] = {data2 : np.std(self.out_dl_predicted_bottleneck[data1][dim]['ztransformed'][data2]) for data2 in self.list_split_through}
                 self.mean[data1][dim]['ztransformed']  = {data2 : np.mean(self.out_dl_predicted_bottleneck[data1][dim]['ztransformed'][data2]) for data2 in self.list_split_through}
         
+        # mean distance is calculated against the 'train' data of ztransformed predictions, every data (train, test, valid and flight) must be compared with the ztransformed train data
+        # furthermore, the predicted train, test, valid and flight data must be ztransformed according to the base data which is the train data, here.
+        # so we need to use --> out_dl_predicted_bottleneck[data][dim]['ztransformed']['train'] - mean['train'][dim]['ztransformed']['train']
         for data in self.list_split_through:
             for dim in self.target_bn:
                 self.mean_dist[data][dim] = {'all_data'        :np.abs(self.out_dl_predicted_bottleneck[data][dim]['ztransformed']['train'] - self.mean['train'][dim]['ztransformed']['train']),
@@ -338,14 +341,19 @@ class model(prepare_inputs):
 
         for data in self.list_split_through:
             for dim in self.target_bn:
-                self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled_outlier']   = self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled']\
-                                                                                           [self.mean_dist[data][dim]['outlier_indices'][0]]
+                self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled_outlier'] = self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled'][self.mean_dist[data][dim]['outlier_indices'][0]]
+                self.out_dl_predicted_bottleneck[data][dim]['scaled_outlier']          = self.out_dl_predicted_bottleneck[data][dim]['scaled']\
+                                                                                         [self.shuffling[data][self.mean_dist[data][dim]['outlier_indices'][0]]]
 
         for data in self.list_split_through:
             for param in self.list_params:
                 for dim in self.target_bn:
-                    for datum in self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled_outlier']:
-                        self.out_dl_predicted[data][param]['scaled_shuffled_outlier'].append(datum) 
+                    for datum in self.out_dl_predicted[data][param]['scaled_shuffled'][self.mean_dist[data][dim]['outlier_indices'][0]]:
+                        self.out_dl_predicted[data][param]['scaled_shuffled_outlier'].append(datum)
+                    for datum in self.out_dl_predicted[data][param]['inverse_shuffled'][self.mean_dist[data][dim]['outlier_indices'][0]]:
+                        self.out_dl_predicted[data][param]['inverse_shuffled_outlier'].append(datum)
+                    for datum in self.out_dl_predicted[data][param]['scaled'][self.shuffling[data][self.mean_dist[data][dim]['outlier_indices'][0]]]:
+                        self.out_dl_predicted[data][param]['scaled_outlier'].append(datum)
 
         # Scatter Plot for the Mean Distance
         for data in self.list_split_through:
@@ -363,7 +371,6 @@ class model(prepare_inputs):
                 plt.ylabel('distance between ztransformed %s of %s data according to train data' % (dim,data))
                 plt.grid()
                 plt.show()
-                
 
     def writeStandartScaler_AsMatFile(self,scaler,fileName,keys):
         if os.path.exists('./MatFiles/')==False:
