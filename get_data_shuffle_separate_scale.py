@@ -153,7 +153,7 @@ class split_data:
         number_of_data              = int(self.test_data.describe()[self.test_data.columns[0]]['count'])
         print('\nnumber of data     =',number_of_data)
         
-    #######################################################################################        
+        #######################################################################################        
         ########## PREPARE FEATURE INPUTS ###############
         self.dict_x_flight_origin               = {}
         self.dict_x_flight_origin[self.namekey[self.counter]] = {key: self.test_data[key].values for key in self.features_input}
@@ -161,7 +161,7 @@ class split_data:
         print('input_features     =',self.features_input)
         print('\n')
         
-    #######################################################################################        
+        #######################################################################################        
         ########## PREPARE TARGET OUTPUTS ###############
         self.dict_y_flight_origin = {}
         self.dict_y_flight_origin[self.namekey[self.counter]] =  {key: self.test_data[key].values for key in self.target_output}
@@ -189,5 +189,4 @@ class split_data:
         self.dict_y_sc[self.namekey[self.counter]] = self.dict_y_flight_sc[self.namekey[self.counter]]
         
         self.counter = self.counter + 1
-    #######################################################################################
         
