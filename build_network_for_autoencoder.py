@@ -189,12 +189,12 @@ class model(prepare_inputs):
 
     def plots(self,pnt_number=250,plot_train=False,plot_test=False,plot_valid=False,plot_flight=False):
         self.pnt_number = pnt_number
-        self.plot_list  = {'train'  :plot_train,
-                           'test'   :plot_test,
-                           'valid'  :plot_valid,
-                           'flight' :plot_flight}
+        self.plot_list  = {namekey  :plot_flight for namekey in self.data_splitted.namekey}
+        self.plot_list['train'] = plot_train
+        self.plot_list['test']  = plot_test
+        self.plot_list['valid'] = plot_valid
         for data in self.list_split_through:
-            if data == 'flight':
+            if 'flight' in data:
                 self.pnt_number = -1
             if self.plot_list[data]:
                 print('\nPlot for %s set\n' % (data))

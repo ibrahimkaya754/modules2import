@@ -3,17 +3,17 @@
 from import_modules import *
 
 class split_data:
-    def __init__(self,training_data,features_input,target_output,scaler,
-                 test_data_isexist=False,shuffle=True):
+    def __init__(self,features_input,target_output,scaler,shuffle=True):
 
-        self.training_data     = training_data
         self.features_input    = features_input
         self.target_output     = target_output
         self.scaler            = scaler
-        self.test_data_isexist = test_data_isexist
         self.shuffle           = shuffle
+        self.counter           = 0
+        self.namekey           = []
 
-    def split_training_data(self):
+    def split_training_data(self,training_data):
+        self.training_data     = training_data
         print('DATA SET PREPARATON FOR TRAINING, TESTING AND VALIDATION\n')
         number_of_data              = int(self.training_data.describe()[self.training_data.columns[0]]['count'])
         print('\nnumber of data     =',number_of_data)
@@ -144,18 +144,19 @@ class split_data:
         self.dict_y_sc['valid'] = self.dict_y_valid_sc
     
     def split_test_data(self,test_data):
-        print('\n Test data will be named as Flight Data from this point\n')
+        
         self.test_data = test_data
-        print('DATA SET PREPARATON FOR TRAINING, TESTING AND VALIDATION\n')
+        self.namekey.append('flight'+str(self.counter+1))
+        print('\n Test data will be named as %s data from this point\n' % (self.namekey[self.counter]))
+        
+        print('DATA SET PREPARATON FOR FLIGHT DATA\n')
         number_of_data              = int(self.test_data.describe()[self.test_data.columns[0]]['count'])
         print('\nnumber of data     =',number_of_data)
         
     #######################################################################################        
         ########## PREPARE FEATURE INPUTS ###############
         self.dict_x_flight_origin               = {}
-        
-        for key in self.features_input:
-            self.dict_x_flight_origin[key] = self.test_data[key].values
+        self.dict_x_flight_origin[self.namekey[self.counter]] = {key: self.test_data[key].values for key in self.features_input}
             
         print('input_features     =',self.features_input)
         print('\n')
@@ -163,8 +164,7 @@ class split_data:
     #######################################################################################        
         ########## PREPARE TARGET OUTPUTS ###############
         self.dict_y_flight_origin = {}
-        for key in self.target_output:
-            self.dict_y_flight_origin[key] =  self.test_data[key].values
+        self.dict_y_flight_origin[self.namekey[self.counter]] =  {key: self.test_data[key].values for key in self.target_output}
 
         print('target_output      =',self.target_output)
         print('\n')
@@ -173,26 +173,21 @@ class split_data:
         ####### 1st Seperate the Validation data from the whole data set ######## 
         self.dict_x_flight     = {}
         self.dict_y_flight     = {}
-        print('\nSPLITTING THE WHOLE DATA TO TRAIN-TEST AND VALIDATION SETS')
-        for key in self.features_input:
-            self.dict_x_flight[key] = self.dict_x_flight_origin[key].reshape((-1,1))
-        for key in self.target_output:
-            self.dict_y_flight[key] = self.dict_y_flight_origin[key].reshape((-1,1))
+        self.dict_x_flight[self.namekey[self.counter]] = {key :self.dict_x_flight_origin[self.namekey[self.counter]][key].reshape((-1,1)) for key in self.features_input}
+        self.dict_y_flight[self.namekey[self.counter]] = {key :self.dict_y_flight_origin[self.namekey[self.counter]][key].reshape((-1,1)) for key in self.target_output}
         print('Done!')
         print('\n')
         ###################### SCALING ###############################
         self.dict_x_flight_sc = {}
         self.dict_y_flight_sc = {}
-        for key in self.features_input:
-            self.dict_x_flight_sc[key] = self.dict_scalerx[key].transform(self.dict_x_flight[key])
-                    
-        self.dict_y_flight_sc = {}
-        for key in self.target_output:
-            self.dict_y_flight_sc[key] = self.dict_scalery[key].transform(self.dict_y_flight[key])
+        self.dict_x_flight_sc[self.namekey[self.counter]] = {key :self.dict_scalerx[key].transform(self.dict_x_flight[self.namekey[self.counter]][key]) for key in self.features_input}
+        self.dict_y_flight_sc[self.namekey[self.counter]] = {key :self.dict_scalery[key].transform(self.dict_y_flight[self.namekey[self.counter]][key]) for key in self.target_output}
 
-        self.dict_x['flight']    = self.dict_x_flight
-        self.dict_x_sc['flight'] = self.dict_x_flight_sc
-        self.dict_y['flight']    = self.dict_y_flight
-        self.dict_y_sc['flight'] = self.dict_y_flight_sc
+        self.dict_x[self.namekey[self.counter]]    = self.dict_x_flight[self.namekey[self.counter]]
+        self.dict_x_sc[self.namekey[self.counter]] = self.dict_x_flight_sc[self.namekey[self.counter]]
+        self.dict_y[self.namekey[self.counter]]    = self.dict_y_flight[self.namekey[self.counter]]
+        self.dict_y_sc[self.namekey[self.counter]] = self.dict_y_flight_sc[self.namekey[self.counter]]
+        
+        self.counter = self.counter + 1
     #######################################################################################
         
