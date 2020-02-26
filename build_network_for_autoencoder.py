@@ -3,7 +3,7 @@ from helper_functions import *
 
 class prepare_inputs:
     def __init__(self, data_splitted, list_tests, list_params,
-                 feature_keys, target_keys,cnn=False):
+                 feature_keys, target_keys, cnn=False):
         
         ##########################################################################################################
         self.data_splitted              = data_splitted
@@ -44,12 +44,13 @@ class prepare_inputs:
         self.output_dl     = {}
 
         for key in self.list_split_through:
-            self.input_dl[key]  = {'input_all'   : self.dict_x_sc[key][list_params[0]]}
-            self.output_dl[key] = {'all_targets' : self.dict_y_sc[key][list_params[0]]}
+            self.input_dl[key]  = {'input_all'   : self.dict_x_sc[key][self.feature_keys[0]]}
+            self.output_dl[key] = {'all_targets' : self.dict_y_sc[key][self.target_keys[0]]}
 
         for key in self.list_split_through:
-            for param in list_params[1:]:
+            for param in self.feature_keys[1:]:
                 self.input_dl[key]['input_all']    =  np.hstack((self.input_dl[key]['input_all'],self.dict_x_sc[key][param]))
+            for param in self.target_keys[1:]:
                 self.output_dl[key]['all_targets'] =  np.hstack((self.output_dl[key]['all_targets'],self.dict_y_sc[key][param]))
 
         if self.cnn:
@@ -64,9 +65,8 @@ class prepare_inputs:
 # BUILD CUSTOM NETWORK
 class model(prepare_inputs):
     def __init__(self, data_splitted, list_tests, list_params,
-                 feature_keys, target_keys,cnn,mdl_name, act='tanh', 
-                 trainable_layer=True, bottleneck=3, initializer='glorot_normal',
-                 list_nn=[150,100,20],load_weights=True):
+                 feature_keys, target_keys, cnn, mdl_name, act='tanh', 
+                 trainable_layer=True, initializer='glorot_normal'):
 
         super().__init__(data_splitted, list_tests, list_params,
                  feature_keys, target_keys,cnn=False)
@@ -76,8 +76,6 @@ class model(prepare_inputs):
         self.trainable_layer = trainable_layer
         self.init            = initializer
         self.opt             = Yogi(lr=0.001)
-        self.list_nn         = list_nn
-        self.bottleneck      = bottleneck
         self.losses          = {}
         self.lossWeights     = {}
         self.scaler_path     = {'feature' : None,
@@ -86,29 +84,59 @@ class model(prepare_inputs):
         self.dict_scalery    = data_splitted.dict_scalery
         self.dict_scalerx    = data_splitted.dict_scalerx
 
-        L1 = Dense(self.list_nn[0], activation=self.act,
+    def autoencoder(self,list_nn=[150,100,20],bottleneck=3,load_weights=False):
+        self.list_nn      = list_nn
+        self.bottleneck   = bottleneck
+        self.load_weights = load_weights
+
+        self.L1 = Dense(self.list_nn[0], activation=self.act,
                      kernel_initializer=self.init, trainable = self.trainable_layer,
                      kernel_regularizer=regularizers.l2(self.regularization_paramater))(self.input_all)
 
         for ii in range(1,len(self.list_nn)):
-            L1 = Dense(self.list_nn[ii], activation=self.act, trainable = self.trainable_layer,
+            self.L1 = Dense(self.list_nn[ii], activation=self.act, trainable = self.trainable_layer,
                          kernel_initializer=self.init,
-                         kernel_regularizer=regularizers.l2(self.regularization_paramater))(L1)    
+                         kernel_regularizer=regularizers.l2(self.regularization_paramater))(self.L1)    
 
-        L1 = Dense(self.bottleneck, activation='linear', name='bottleneck',
+        self.L1 = Dense(self.bottleneck, activation='linear', name='bottleneck',
                          kernel_initializer=self.init,
-                         kernel_regularizer=regularizers.l2(self.regularization_paramater))(L1)
+                         kernel_regularizer=regularizers.l2(self.regularization_paramater))(self.L1)
         
         for ii in range(0,len(self.list_nn)):
-            L1 = Dense(self.list_nn[-ii-1], activation=self.act, trainable = self.trainable_layer,
+            self.L1 = Dense(self.list_nn[-ii-1], activation=self.act, trainable = self.trainable_layer,
                          kernel_initializer=self.init,
-                         kernel_regularizer=regularizers.l2(self.regularization_paramater))(L1)
+                         kernel_regularizer=regularizers.l2(self.regularization_paramater))(self.L1)
 
-        LOut = Dense(len(self.target_keys), activation=self.act, name='all_targets',
+        self.LOut = Dense(len(self.target_keys), activation=self.act, name='all_targets',
                          kernel_initializer=self.init,
-                         kernel_regularizer=regularizers.l2(self.regularization_paramater))(L1)
+                         kernel_regularizer=regularizers.l2(self.regularization_paramater))(self.L1)
+                        
+        self.autoencoder_is_exist = True
+        self.__build_model__()
+    
+    def neuralnet(self,list_nn=[250,200,150,50,10],load_weights=False):
+        self.list_nn      = list_nn
+        self.load_weights = load_weights
 
-        self.model                         = Model(inputs=[self.input_all], outputs=LOut)
+        self.L1 = Dense(self.list_nn[0], activation=self.act,
+                     kernel_initializer=self.init, trainable = self.trainable_layer,
+                     kernel_regularizer=regularizers.l2(self.regularization_paramater))(self.input_all)
+
+        for ii in range(1,len(self.list_nn)):
+            self.L1 = Dense(self.list_nn[ii], activation=self.act, trainable = self.trainable_layer,
+                         kernel_initializer=self.init,
+                         kernel_regularizer=regularizers.l2(self.regularization_paramater))(self.L1)    
+
+
+        self.LOut = Dense(len(self.target_keys), activation='linear', name='all_targets',
+                         kernel_initializer=self.init,
+                         kernel_regularizer=regularizers.l2(self.regularization_paramater))(self.L1)
+
+        self.autoencoder_is_exist = False
+        self.__build_model__()
+                        
+    def __build_model__(self):
+        self.model                         = Model(inputs=[self.input_all], outputs=self.LOut)
         self.description                   = None
         self.losses['all_targets']         = huber_loss
         self.lossWeights['all_targets']    = 1.0
@@ -128,14 +156,14 @@ class model(prepare_inputs):
         plot_model(self.model,to_file=self.model_name+'.png', show_layer_names=True,show_shapes=True)
         print('\n%s with %s params created' % (self.model_name,self.number_of_params))
         if os.path.exists(self.model_path):
-            if load_weights:
+            if self.load_weights:
                 print('weights loaded for %s' % (self.model_name))
                 self.model.load_weights(self.model_path)
  
         # Make the prediction for bottleneck layer
-        self.bottleneck_layer = Model(self.model.input,self.model.get_layer('bottleneck').output)
-
-        self.target_bn = ['dim'+str(ii) for ii in range(self.bottleneck)]
+        if self.autoencoder_is_exist:
+            self.bottleneck_layer = Model(self.model.input,self.model.get_layer('bottleneck').output)
+            self.target_bn = ['dim'+str(ii) for ii in range(self.bottleneck)]
         
     def __describe__(self):
         return self.description
@@ -162,30 +190,32 @@ class model(prepare_inputs):
         self.val_loss = np.min(self.history.history['val_loss'])
         
     def results(self,load_weights=False):
-    
         if load_weights:
             self.model.load_weights(self.model_path)
             print('Weights Loaded')
         
         self.out_dl_predicted            = {}
-        self.out_dl_predicted_bottleneck = {}
         for data in self.list_split_through:
             self.out_dl_predicted[data]            = {'all_target' : self.model.predict(self.input_dl[data], batch_size=None)}
-            self.out_dl_predicted_bottleneck[data] = {'all_target' : self.bottleneck_layer.predict(self.input_dl[data], batch_size=None)}
             print('Prediction for %s set is completed' % (data))
-            print('Bottleneck Prediction for %s set is completed' % (data))
-            for value,key in enumerate(self.list_params):
+            for value,key in enumerate(self.target_keys):
                 self.out_dl_predicted[data][key]            = {'scaled'  : self.out_dl_predicted[data]['all_target'][:,value]}
                 self.out_dl_predicted[data][key]['inverse'] = self.dict_scalery[key].inverse_transform(self.out_dl_predicted[data][key]['scaled'].reshape(-1,1))
-            for value,key in enumerate(self.target_bn):
-                self.out_dl_predicted_bottleneck[data][key] = {'scaled'  : self.out_dl_predicted_bottleneck[data]['all_target'][:,value]}
         print('-------------------------------------------------------------------------------------\n')
         for data in self.list_split_through:
             print('\nExplained Variance Calculation for %s set' % (data))
-            for param in self.list_params:
+            for param in self.target_keys:
                 print("Explained Variance of %s set for %s : %.8f" % (data,param,explained_variance_score(self.dict_y_sc[data][param],
                       self.out_dl_predicted[data][param]['scaled'].reshape(self.out_dl_predicted[data][param]['scaled'].shape[0],1))))
             print('-------------------------------------------------------------------------------------')
+
+        if self.autoencoder_is_exist:
+            self.out_dl_predicted_bottleneck = {}
+            for data in self.list_split_through:
+                self.out_dl_predicted_bottleneck[data] = {'all_target' : self.bottleneck_layer.predict(self.input_dl[data], batch_size=None)}
+                print('Bottleneck Prediction for %s set is completed' % (data))
+                for value,key in enumerate(self.target_bn):
+                    self.out_dl_predicted_bottleneck[data][key] = {'scaled'  : self.out_dl_predicted_bottleneck[data]['all_target'][:,value]}
 
     def plots(self,pnt_number=250,plot_train=False,plot_test=False,plot_valid=False,plot_flight=False):
         self.pnt_number = pnt_number
@@ -198,7 +228,7 @@ class model(prepare_inputs):
                 self.pnt_number = -1
             if self.plot_list[data]:
                 print('\nPlot for %s set\n' % (data))
-                for param in self.list_params:
+                for param in self.target_keys:
                     print(param)
                     plt.figure(figsize=(26,9))
                     plt.plot(self.out_dl_predicted[data][param]['scaled'][0:self.pnt_number],'--',markersize=1,label='predicted',color='tab:red')
@@ -211,36 +241,39 @@ class model(prepare_inputs):
                     plt.show()
 
     def scatter_plot_for_bottleneck(self):
-        for value1,key1 in enumerate(self.target_bn):
-            if key1 == self.target_bn[-1]:
-                break
-            else:
-                for key2 in self.target_bn[value1+1:]:
-                    if key1 == key2:
-                        continue
-                    else:
-                        fig = plt.figure(figsize=(26,9))
-                        for data in self.list_split_through:
-                            plt.scatter(self.out_dl_predicted_bottleneck[data][key1]['scaled'],self.out_dl_predicted_bottleneck[data][key2]['scaled'],label=data)
-                            plt.legend()
-                            plt.xlabel(key1)
-                            plt.ylabel(key2)
-                            plt.grid()
-                        plt.show()
-                        #fig.savefig('./images/scatterplot_bottleneck_')
+        if self.autoencoder_is_exist:
+            for value1,key1 in enumerate(self.target_bn):
+                if key1 == self.target_bn[-1]:
+                    break
+                else:
+                    for key2 in self.target_bn[value1+1:]:
+                        if key1 == key2:
+                            continue
+                        else:
+                            fig = plt.figure(figsize=(26,9))
+                            for data in self.list_split_through:
+                                plt.scatter(self.out_dl_predicted_bottleneck[data][key1]['scaled'],self.out_dl_predicted_bottleneck[data][key2]['scaled'],label=data)
+                                plt.legend()
+                                plt.xlabel(key1)
+                                plt.ylabel(key2)
+                                plt.grid()
+                            plt.show()
+                            #fig.savefig('./images/scatterplot_bottleneck_')
+        else:
+            print('bottleneck is applicable only for autoencoder')
             
     def __mae__(self):
         self.mae = {}
         for data in self.list_split_through:
-            self.mae[data] = {param:np.zeros((self.out_dl_predicted[data][param]['scaled'].shape[0],1)) for param in self.list_params}
+            self.mae[data] = {param:np.zeros((self.out_dl_predicted[data][param]['scaled'].shape[0],1)) for param in self.target_keys}
         
         for data in self.list_split_through:
-            for param in self.list_params:
+            for param in self.target_keys:
                 self.mae[data][param] = self.out_dl_predicted[data][param]['scaled'].reshape(-1,1) - self.dict_y_sc[data][param]
           
     def histogram_mae(self):
         self.__mae__()
-        for param in self.list_params:
+        for param in self.target_keys:
             print('************ Histogram Plot of Mae for %s set****************\n' % (self.list_split_through))
             for value,data in enumerate(self.list_split_through):
                 fig = plt.figure(figsize=(25,36))
@@ -256,121 +289,127 @@ class model(prepare_inputs):
             print("*******************************************************************************************************************")
                 
     def corr(self):
-        # Pearson Correlation
-        self.covariance  = {}
-        self.sigma       = {}
-        self.correlation = {}
+        # Pearson Correlation for bottleneck dimensions
+        if self.autoencoder_is_exist:
+            self.covariance  = {}
+            self.sigma       = {}
+            self.correlation = {}
 
-        for data in self.list_split_through:
-            self.covariance[data]  = {}
-            self.sigma[data]       = {}
-            self.correlation[data] = {}
-        
-        for data in self.list_split_through:
-            for dim in self.target_bn:
-                self.covariance[data][dim]  = {}
-                self.correlation[data][dim] = {}
+            for data in self.list_split_through:
+                self.covariance[data]  = {}
+                self.sigma[data]       = {}
+                self.correlation[data] = {}
+            
+            for data in self.list_split_through:
+                for dim in self.target_bn:
+                    self.covariance[data][dim]  = {}
+                    self.correlation[data][dim] = {}
 
-        for data in self.list_split_through:
-            for dim1 in self.target_bn:
-                self.sigma[data][dim1] = sigma(self.out_dl_predicted_bottleneck[data][dim1]['scaled'])
-                for dim2 in self.target_bn:
-                    self.sigma[data][dim2] = sigma(self.out_dl_predicted_bottleneck[data][dim2]['scaled'])
-                    self.covariance[data][dim1][dim2]  = covar(self.out_dl_predicted_bottleneck[data][dim1]['scaled'],self.out_dl_predicted_bottleneck[data][dim2]['scaled'])
-                    self.correlation[data][dim1][dim2] = self.covariance[data][dim1][dim2] / (self.sigma[data][dim1] * self.sigma[data][dim2])
-   
-        # Scaler Plot for the Correlations of Dimensions Obtained in Bottleneck
-        for data in self.list_split_through:
-            print('\nCorrelation Coefficient for %s data' % (data))
-            for dim1 in self.target_bn:
-                plt.figure(figsize=(26,9))
-                plt.scatter(np.arange(len(self.correlation[data][dim1])),[self.correlation[data][dim1][dim] for dim in self.target_bn], label= 'correlation for %s' % (dim1))
-                plt.legend()
-                plt.xlabel([dim for dim in self.target_bn])
-                plt.ylabel(dim1)
-                plt.title('Correlation for %s obtained from the prediction of bottleneck of AutoEncoder' % (dim1))
-                plt.grid()
-                plt.show()
+            for data in self.list_split_through:
+                for dim1 in self.target_bn:
+                    self.sigma[data][dim1] = sigma(self.out_dl_predicted_bottleneck[data][dim1]['scaled'])
+                    for dim2 in self.target_bn:
+                        self.sigma[data][dim2] = sigma(self.out_dl_predicted_bottleneck[data][dim2]['scaled'])
+                        self.covariance[data][dim1][dim2]  = covar(self.out_dl_predicted_bottleneck[data][dim1]['scaled'],self.out_dl_predicted_bottleneck[data][dim2]['scaled'])
+                        self.correlation[data][dim1][dim2] = self.covariance[data][dim1][dim2] / (self.sigma[data][dim1] * self.sigma[data][dim2])
+    
+            # Scaler Plot for the Correlations of Dimensions Obtained in Bottleneck
+            for data in self.list_split_through:
+                print('\nCorrelation Coefficient for %s data' % (data))
+                for dim1 in self.target_bn:
+                    plt.figure(figsize=(26,9))
+                    plt.scatter(np.arange(len(self.correlation[data][dim1])),[self.correlation[data][dim1][dim] for dim in self.target_bn], label= 'correlation for %s' % (dim1))
+                    plt.legend()
+                    plt.xlabel([dim for dim in self.target_bn])
+                    plt.ylabel(dim1)
+                    plt.title('Correlation for %s obtained from the prediction of bottleneck of AutoEncoder' % (dim1))
+                    plt.grid()
+                    plt.show()
+        else:
+            print('bottleneck correlation is applicable only for autoencoder')
 
     def mean_distance(self):
-        print('Mean Distance for the bottleneck dimensions')
-        self.shuffling = {}
-        self.mean_dist = {}
-        self.mean      = {}
-        self.sigma     = {}
+        if self.autoencoder_is_exist:
+            print('Mean Distance for the bottleneck dimensions')
+            self.shuffling = {}
+            self.mean_dist = {}
+            self.mean      = {}
+            self.sigma     = {}
 
-        for data in self.list_split_through:
-            self.shuffling[data] = np.random.permutation(np.arange(self.out_dl_predicted_bottleneck[data][self.target_bn[0]]['scaled'].shape[0]))
-            self.mean_dist[data] = {}
-            self.mean[data]      = {}
-            self.sigma[data]     = {}
+            for data in self.list_split_through:
+                self.shuffling[data] = np.random.permutation(np.arange(self.out_dl_predicted_bottleneck[data][self.target_bn[0]]['scaled'].shape[0]))
+                self.mean_dist[data] = {}
+                self.mean[data]      = {}
+                self.sigma[data]     = {}
 
-        for data in self.list_split_through:
-            for dim in self.target_bn:
-                self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled'] = self.out_dl_predicted_bottleneck[data][dim]['scaled'][self.shuffling[data]]
-            for param in self.list_params:
-                self.out_dl_predicted[data][param]['scaled_shuffled']          = self.out_dl_predicted[data][param]['scaled'][self.shuffling[data]]
-                self.out_dl_predicted[data][param]['inverse_shuffled']         = self.out_dl_predicted[data][param]['inverse'][self.shuffling[data]]
-                self.out_dl_predicted[data][param]['scaled_shuffled_outlier']  = []
-                self.out_dl_predicted[data][param]['inverse_shuffled_outlier'] = []
-                self.out_dl_predicted[data][param]['scaled_outlier']           = []
-
-        for data in self.list_split_through:
-            for dim in self.target_bn:
-                self.sigma[data][dim] = {'original' : np.std(self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled'])}
-                self.mean[data][dim]  = {'original' : np.mean(self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled'])}
-
-        for dim in self.target_bn:
-            for data1 in self.list_split_through:
-                self.out_dl_predicted_bottleneck[data1][dim]['ztransformed'] = {data2 : (self.out_dl_predicted_bottleneck[data1][dim]['scaled_shuffled'] - \
-                                                                                         self.mean[data2][dim]['original'])/self.sigma[data2][dim]['original'] for data2 in self.list_split_through}
-
-        for dim in self.target_bn:
-            for data1 in self.list_split_through:
-                self.sigma[data1][dim]['ztransformed'] = {data2 : np.std(self.out_dl_predicted_bottleneck[data1][dim]['ztransformed'][data2]) for data2 in self.list_split_through}
-                self.mean[data1][dim]['ztransformed']  = {data2 : np.mean(self.out_dl_predicted_bottleneck[data1][dim]['ztransformed'][data2]) for data2 in self.list_split_through}
-        
-        # mean distance is calculated against the 'train' data of ztransformed predictions, every data (train, test, valid and flight) must be compared with the ztransformed train data
-        # furthermore, the predicted train, test, valid and flight data must be ztransformed according to the base data which is the train data, here.
-        # so we need to use --> out_dl_predicted_bottleneck[data][dim]['ztransformed']['train'] - mean['train'][dim]['ztransformed']['train']
-        for data in self.list_split_through:
-            for dim in self.target_bn:
-                self.mean_dist[data][dim] = {'all_data'        :np.abs(self.out_dl_predicted_bottleneck[data][dim]['ztransformed']['train'] - self.mean['train'][dim]['ztransformed']['train']),
-                                             'outlier_indices' :np.where(np.abs(self.out_dl_predicted_bottleneck[data][dim]['ztransformed']['train'] - self.mean['train'][dim]['ztransformed']['train']) > \
-                                                                (self.mean['train'][dim]['ztransformed']['train']+3*self.sigma['train'][dim]['ztransformed']['train']))}
-
-        for data in self.list_split_through:
-            for dim in self.target_bn:
-                self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled_outlier'] = self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled'][self.mean_dist[data][dim]['outlier_indices'][0]]
-                self.out_dl_predicted_bottleneck[data][dim]['scaled_outlier']          = self.out_dl_predicted_bottleneck[data][dim]['scaled']\
-                                                                                         [self.shuffling[data][self.mean_dist[data][dim]['outlier_indices'][0]]]
-
-        for data in self.list_split_through:
-            for param in self.list_params:
+            for data in self.list_split_through:
                 for dim in self.target_bn:
-                    for datum in self.out_dl_predicted[data][param]['scaled_shuffled'][self.mean_dist[data][dim]['outlier_indices'][0]]:
-                        self.out_dl_predicted[data][param]['scaled_shuffled_outlier'].append(datum)
-                    for datum in self.out_dl_predicted[data][param]['inverse_shuffled'][self.mean_dist[data][dim]['outlier_indices'][0]]:
-                        self.out_dl_predicted[data][param]['inverse_shuffled_outlier'].append(datum)
-                    for datum in self.out_dl_predicted[data][param]['scaled'][self.shuffling[data][self.mean_dist[data][dim]['outlier_indices'][0]]]:
-                        self.out_dl_predicted[data][param]['scaled_outlier'].append(datum)
+                    self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled'] = self.out_dl_predicted_bottleneck[data][dim]['scaled'][self.shuffling[data]]
+                for param in self.target_keys:
+                    self.out_dl_predicted[data][param]['scaled_shuffled']          = self.out_dl_predicted[data][param]['scaled'][self.shuffling[data]]
+                    self.out_dl_predicted[data][param]['inverse_shuffled']         = self.out_dl_predicted[data][param]['inverse'][self.shuffling[data]]
+                    self.out_dl_predicted[data][param]['scaled_shuffled_outlier']  = []
+                    self.out_dl_predicted[data][param]['inverse_shuffled_outlier'] = []
+                    self.out_dl_predicted[data][param]['scaled_outlier']           = []
 
-        # Scatter Plot for the Mean Distance
-        for data in self.list_split_through:
+            for data in self.list_split_through:
+                for dim in self.target_bn:
+                    self.sigma[data][dim] = {'original' : np.std(self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled'])}
+                    self.mean[data][dim]  = {'original' : np.mean(self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled'])}
+
             for dim in self.target_bn:
-                fig = plt.figure(figsize=(26,9))
-                plt.scatter(np.arange(self.out_dl_predicted_bottleneck[data][dim]['scaled'].shape[0]), 
-                            self.mean_dist[data][dim]['all_data'], 
-                            label='%s vs train for %s' % (data,dim))
-                plt.scatter(np.arange(self.out_dl_predicted_bottleneck[data][dim]['scaled'].shape[0]), 
-                            np.ones((self.out_dl_predicted_bottleneck[data][dim]['scaled'].shape[0],1)) * \
-                            (self.mean['train'][dim]['ztransformed']['train']+3*self.sigma['train'][dim]['ztransformed']['train']), 
-                            label='3 sigma distance from the mean of %s of the train data' % (dim))
-                plt.legend()
-                plt.xlabel('data')
-                plt.ylabel('distance between ztransformed %s of %s data according to train data' % (dim,data))
-                plt.grid()
-                plt.show()
+                for data1 in self.list_split_through:
+                    self.out_dl_predicted_bottleneck[data1][dim]['ztransformed'] = {data2 : (self.out_dl_predicted_bottleneck[data1][dim]['scaled_shuffled'] - \
+                                                                                            self.mean[data2][dim]['original'])/self.sigma[data2][dim]['original'] for data2 in self.list_split_through}
+
+            for dim in self.target_bn:
+                for data1 in self.list_split_through:
+                    self.sigma[data1][dim]['ztransformed'] = {data2 : np.std(self.out_dl_predicted_bottleneck[data1][dim]['ztransformed'][data2]) for data2 in self.list_split_through}
+                    self.mean[data1][dim]['ztransformed']  = {data2 : np.mean(self.out_dl_predicted_bottleneck[data1][dim]['ztransformed'][data2]) for data2 in self.list_split_through}
+            
+            # mean distance is calculated against the 'train' data of ztransformed predictions, every data (train, test, valid and flight) must be compared with the ztransformed train data
+            # furthermore, the predicted train, test, valid and flight data must be ztransformed according to the base data which is the train data, here.
+            # so we need to use --> out_dl_predicted_bottleneck[data][dim]['ztransformed']['train'] - mean['train'][dim]['ztransformed']['train']
+            for data in self.list_split_through:
+                for dim in self.target_bn:
+                    self.mean_dist[data][dim] = {'all_data'        :np.abs(self.out_dl_predicted_bottleneck[data][dim]['ztransformed']['train'] - self.mean['train'][dim]['ztransformed']['train']),
+                                                'outlier_indices' :np.where(np.abs(self.out_dl_predicted_bottleneck[data][dim]['ztransformed']['train'] - self.mean['train'][dim]['ztransformed']['train']) > \
+                                                                    (self.mean['train'][dim]['ztransformed']['train']+3*self.sigma['train'][dim]['ztransformed']['train']))}
+
+            for data in self.list_split_through:
+                for dim in self.target_bn:
+                    self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled_outlier'] = self.out_dl_predicted_bottleneck[data][dim]['scaled_shuffled'][self.mean_dist[data][dim]['outlier_indices'][0]]
+                    self.out_dl_predicted_bottleneck[data][dim]['scaled_outlier']          = self.out_dl_predicted_bottleneck[data][dim]['scaled']\
+                                                                                            [self.shuffling[data][self.mean_dist[data][dim]['outlier_indices'][0]]]
+
+            for data in self.list_split_through:
+                for param in self.target_keys:
+                    for dim in self.target_bn:
+                        for datum in self.out_dl_predicted[data][param]['scaled_shuffled'][self.mean_dist[data][dim]['outlier_indices'][0]]:
+                            self.out_dl_predicted[data][param]['scaled_shuffled_outlier'].append(datum)
+                        for datum in self.out_dl_predicted[data][param]['inverse_shuffled'][self.mean_dist[data][dim]['outlier_indices'][0]]:
+                            self.out_dl_predicted[data][param]['inverse_shuffled_outlier'].append(datum)
+                        for datum in self.out_dl_predicted[data][param]['scaled'][self.shuffling[data][self.mean_dist[data][dim]['outlier_indices'][0]]]:
+                            self.out_dl_predicted[data][param]['scaled_outlier'].append(datum)
+
+            # Scatter Plot for the Mean Distance
+            for data in self.list_split_through:
+                for dim in self.target_bn:
+                    fig = plt.figure(figsize=(26,9))
+                    plt.scatter(np.arange(self.out_dl_predicted_bottleneck[data][dim]['scaled'].shape[0]), 
+                                self.mean_dist[data][dim]['all_data'], 
+                                label='%s vs train for %s' % (data,dim))
+                    plt.scatter(np.arange(self.out_dl_predicted_bottleneck[data][dim]['scaled'].shape[0]), 
+                                np.ones((self.out_dl_predicted_bottleneck[data][dim]['scaled'].shape[0],1)) * \
+                                (self.mean['train'][dim]['ztransformed']['train']+3*self.sigma['train'][dim]['ztransformed']['train']), 
+                                label='3 sigma distance from the mean of %s of the train data' % (dim))
+                    plt.legend()
+                    plt.xlabel('data')
+                    plt.ylabel('distance between ztransformed %s of %s data according to train data' % (dim,data))
+                    plt.grid()
+                    plt.show()
+        else:
+            print('mean distance for bottleneck dimensions is applicable only for autoencoder')
 
     def writeStandartScaler_AsMatFile(self,scaler,fileName,keys):
         if os.path.exists('./MatFiles/')==False:
