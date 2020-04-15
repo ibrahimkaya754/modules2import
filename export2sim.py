@@ -64,6 +64,6 @@ class export_wghts_and_biases:
         
         print('input out file created for matlab\n')
         print('file consisting mat file paths created for matlab\n')
-        print('data files including saved to %s\n' % (self.filename_dataset))
-        print('model files including weights and biases have been created and saved to %s\n' % (self.filename_wghts))
+        print('data files including saved to "%s"\n' % (self.filename_dataset))
+        print('model files including weights and biases have been created and saved to "%s"\n' % (self.filename_wghts))
         #####################################################################################################
