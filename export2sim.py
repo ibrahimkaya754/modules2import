@@ -3,7 +3,7 @@ from import_modules import *
 
 class export_wghts_and_biases:
     def __init__(self,models,filename_dataset,filename_wghts='all_models.mat',
-                 feature_keys = feature_keys, target_keys= target_keys):
+                 feature_keys = None, target_keys= None):
         
         self.models           = models
         self.filename_dataset = filename_dataset
@@ -28,7 +28,7 @@ class export_wghts_and_biases:
                 layers[key+'_layer'+str(ii+1)+'_bias']    = wghts[key][2*ii+1].reshape(-1,1)
             print('%s weights has been exported\n' % (key))
             
-        sio.savemat(current_dir+'Python2Simulink/'+self.filename_weights,layers)
+        sio.savemat(current_dir+'Python2Simulink/'+self.filename_wghts,layers)
         ####################################################################################################
         
         ############################ Create Files for Matlab to Read and Run ###############################
@@ -43,8 +43,8 @@ class export_wghts_and_biases:
         mat_file          = open(current_dir+'Python2Simulink/mat_files_for_matlab.txt','w+')
         mat_file_paths    = []
         
-        mat_file_paths.append(os.getcwd()+'/'+self.filename)
-        mat_file_paths.append(filename_weights)
+        mat_file_paths.append(os.getcwd()+'/'+self.filename_dataset)
+        mat_file_paths.append(self.filename_wghts)
         for key in list(self.models.keys()):
             mat_file_paths.append(self.models[key].scaler_path['feature'])
             mat_file_paths.append(self.models[key].scaler_path['target'])
@@ -64,4 +64,6 @@ class export_wghts_and_biases:
         
         print('input out file created for matlab\n')
         print('file consisting mat file paths created for matlab\n')
+        print('data files including saved to %s\n' % (self.filename_dataset))
+        print('model files including weights and biases have been created and saved to %s\n' % (self.filename_wghts))
         #####################################################################################################
