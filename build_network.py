@@ -115,8 +115,9 @@ class model(prepare_inputs):
         self.__build_model__()
     
     def neuralnet(self,list_nn=[250,200,150,50,10],load_weights=False):
-        self.list_nn      = list_nn
-        self.load_weights = load_weights
+        self.list_nn         = list_nn
+        self.load_weights    = load_weights
+        self.total_layer_no  = len(self.list_nn)+1
 
         self.L1 = Dense(self.list_nn[0], activation=self.act,
                      kernel_initializer=self.init, trainable = self.trainable_layer,

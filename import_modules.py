@@ -1,9 +1,7 @@
+# Import Libraries
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
-
-from kerasbackend import kerasbackend
-KERASBACKEND = kerasbackend('tensorflow')
 
 from keras_contrib.optimizers import Yogi
 import scipy.io as sio
@@ -20,7 +18,7 @@ from bokeh.plotting import figure
 output_notebook()
 
 TOOLS = "pan,wheel_zoom,box_zoom,reset,save,box_select"
-from keras.layers import Input, Dense, Dropout, regularizers
+from keras.layers import Input, Dense, Dropout, regularizers, AlphaDropout
 from keras.models import Model, load_model
 from keras.layers.normalization import BatchNormalization
 from livelossplot import PlotLossesKeras
@@ -32,11 +30,9 @@ from keras.utils import plot_model
 from keras.utils import multi_gpu_utils
 import tensorflow as tf
 
+from keras.utils import plot_model
 from keras.layers import Conv1D
 from keras.layers import MaxPooling1D, Flatten
-
-from keras.utils import plot_model
-
 # Pandas Libraries
 import pandas as pd
 
@@ -51,7 +47,7 @@ import pickle
 
 # Plotting Libraries
 import matplotlib.pyplot as plt
-import matplotlib as mpl
+import matplotlib
 from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits.mplot3d import Axes3D
 from bokeh.layouts import gridplot
@@ -67,17 +63,27 @@ from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, QuantileTransformer
 from sklearn.preprocessing import PowerTransformer
 
-from matplotlib import pyplot
-
-import kerasbackend
 from keras import backend as K
-
 from keras_contrib.optimizers import Padam, Yogi, ftml
 from keras.optimizers import SGD
 from keras.layers.merge import Concatenate
 from keras.layers import Multiply
 from keras.layers.core import Lambda
 from ipy_table import *
+
+import shutil
+current_dir = os.getcwd()+'/'
+if 'kerasbackend.py' not in os.listdir('./'):
+    print('kerasbackend.py does not exist in the directory, so it will be copied to the working directory')
+    shutil.copy('/home/ikaya/anaconda3/envs/py36/lib/python3.6/site-packages/kerasbackend.py',current_dir)
+    print('... copied ...')
+    from kerasbackend import kerasbackend
+    KERASBACKEND = kerasbackend('tensorflow')
+
+else:
+    print('kerasbackend.py exist in the directory')
+    from kerasbackend import kerasbackend
+    KERASBACKEND = kerasbackend('tensorflow')
 
 ###################### Tensorflow Ram Kullanımının optimize edilmesi ####################################################################
 
