@@ -38,6 +38,7 @@ import pandas as pd
 
 # Numpy Libraries
 import numpy as np
+import random
 np.random.seed(8)
 
 # File IO Libraries
@@ -70,6 +71,7 @@ from keras.layers.merge import Concatenate
 from keras.layers import Multiply
 from keras.layers.core import Lambda
 from ipy_table import *
+from keras.losses import mean_squared_error
 
 import shutil
 current_dir = os.getcwd()+'/'
