@@ -3,7 +3,6 @@ import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
-from keras_contrib.optimizers import Yogi
 import scipy.io as sio
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -18,21 +17,20 @@ from bokeh.plotting import figure
 output_notebook()
 
 TOOLS = "pan,wheel_zoom,box_zoom,reset,save,box_select"
-from keras.layers import Input, Dense, Dropout, regularizers, AlphaDropout
-from keras.models import Model, load_model
-from keras.layers.normalization import BatchNormalization
-from livelossplot import PlotLossesKeras
-from keras.layers.advanced_activations import LeakyReLU, PReLU
-from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, TensorBoard
-from keras.optimizers import Adam, SGD
-from keras import backend as k
-from keras.utils import plot_model
-from keras.utils import multi_gpu_utils
 import tensorflow as tf
-
-from keras.utils import plot_model
-from keras.layers import Conv1D
-from keras.layers import MaxPooling1D, Flatten
+from tensorflow.keras import regularizers
+from tensorflow.keras.layers import Input, Dense, Dropout, AlphaDropout
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.layers import BatchNormalization
+from livelossplot import PlotLossesKeras
+from tensorflow.keras.layers import LeakyReLU, PReLU
+from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, TensorBoard
+from tensorflow.keras.optimizers import Adam, SGD
+from tensorflow.keras import backend as k
+from tensorflow.keras.utils import plot_model
+from tensorflow.keras.utils import plot_model
+from tensorflow.keras.layers import Conv1D
+from tensorflow.keras.layers import MaxPooling1D, Flatten
 # Pandas Libraries
 import pandas as pd
 
@@ -47,8 +45,6 @@ import scipy.io as sio
 import pickle
 
 # Plotting Libraries
-import matplotlib.pyplot as plt
-import matplotlib
 from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits.mplot3d import Axes3D
 from bokeh.layouts import gridplot
@@ -58,20 +54,19 @@ from bokeh.models import Range1d
 # Data Preparation Libraries
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
-from sklearn.externals import joblib
 from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error
 # Scaling
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, QuantileTransformer
 from sklearn.preprocessing import PowerTransformer
 
-from keras import backend as K
+from tensorflow.keras import backend as K
 from keras_contrib.optimizers import Padam, Yogi, ftml
-from keras.optimizers import SGD
-from keras.layers.merge import Concatenate
-from keras.layers import Multiply
-from keras.layers.core import Lambda
+from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.layers import Concatenate
+from tensorflow.keras.layers import Multiply
+from tensorflow.keras.layers import Lambda
 from ipy_table import *
-from keras.losses import mean_squared_error
+from tensorflow.keras.losses import mean_squared_error
 
 import shutil
 current_dir = os.getcwd()+'/'
@@ -86,17 +81,14 @@ else:
     print('kerasbackend.py exist in the directory')
     from kerasbackend import kerasbackend
     KERASBACKEND = kerasbackend('tensorflow')
-
-###################### Tensorflow Ram Kullanımının optimize edilmesi ####################################################################
+    
+import tensorflow.compat.v1
 
 if KERASBACKEND.KERAS_BACKEND == 'tensorflow':
     # TensorFlow wizardry
-    config = tf.ConfigProto() 
+    config = tensorflow.compat.v1.ConfigProto() 
     # Don't pre-allocate memory; allocate as-needed
     config.gpu_options.allow_growth = True 
     # Only allow a total of half the GPU memory to be allocated
     config.gpu_options.per_process_gpu_memory_fraction = 1.0 
-    # Create a session with the above options specified.
-    K.tensorflow_backend.set_session(tf.Session(config=config))
 
-##################################################################################################################################
