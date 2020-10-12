@@ -75,7 +75,7 @@ class model(prepare_inputs):
         self.act             = act
         self.trainable_layer = trainable_layer
         self.init            = initializer
-        self.opt             = Yogi(lr=0.001)
+        self.opt             = Adam(lr=0.001)
         self.losses          = {}
         self.lossWeights     = {}
         self.scaler_path     = {'feature' : None,
@@ -139,7 +139,7 @@ class model(prepare_inputs):
     def __build_model__(self):
         self.model                         = Model(inputs=[self.input_all], outputs=self.LOut)
         self.description                   = None
-        self.losses['all_targets']         = huber_loss
+        self.losses['all_targets']         = mean_squared_error
         self.lossWeights['all_targets']    = 1.0
         self.model_path                    = os.getcwd()+"/" + self.model_name + '.hdf5'
         self.learning_rate_decrease_factor = 0.97
@@ -218,9 +218,10 @@ class model(prepare_inputs):
                 for value,key in enumerate(self.target_bn):
                     self.out_dl_predicted_bottleneck[data][key] = {'scaled'  : self.out_dl_predicted_bottleneck[data]['all_target'][:,value]}
 
-    def plots(self,pnt_number=250,plot_train=False,plot_test=False,plot_valid=False,plot_flight=False):
-        self.pnt_number = pnt_number
-        self.plot_list  = {namekey  :plot_flight for namekey in self.data_splitted.namekey}
+    def plots(self,pnt_number=250,plot_train=False,plot_test=False,plot_valid=False,plot_flight=False,inverseplot=False):
+        self.pnt_number  = pnt_number
+        self.inverseplot = inverseplot
+        self.plot_list   = {namekey  :plot_flight for namekey in self.data_splitted.namekey}
         self.plot_list['train'] = plot_train
         self.plot_list['test']  = plot_test
         self.plot_list['valid'] = plot_valid
@@ -232,8 +233,12 @@ class model(prepare_inputs):
                 for param in self.target_keys:
                     print(param)
                     plt.figure(figsize=(26,9))
-                    plt.plot(self.out_dl_predicted[data][param]['scaled'][0:self.pnt_number],'--',markersize=1,label='predicted',color='tab:red')
-                    plt.plot(self.dict_y_sc[data][param][0:self.pnt_number],'--', markersize=1, label='actual', color = 'tab:blue')
+                    if self.inverseplot:
+                        plt.plot(self.out_dl_predicted[data][param]['inverse'][0:self.pnt_number],'--',markersize=1,label='predicted',color='tab:red')
+                        plt.plot(self.dict_y[data][param][0:self.pnt_number],'--', markersize=1, label='actual', color = 'tab:blue')
+                    else:
+                        plt.plot(self.out_dl_predicted[data][param]['scaled'][0:self.pnt_number],'--',markersize=1,label='predicted',color='tab:red')
+                        plt.plot(self.dict_y_sc[data][param][0:self.pnt_number],'--', markersize=1, label='actual', color = 'tab:blue')
                     plt.legend()
                     plt.xlabel('sample point')
                     plt.ylabel(param)
