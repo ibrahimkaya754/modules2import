@@ -66,7 +66,7 @@ class prepare_inputs:
 class model(prepare_inputs):
     def __init__(self, data_splitted, list_tests, list_params,
                  feature_keys, target_keys, cnn, mdl_name, act='tanh', 
-                 trainable_layer=True, initializer='glorot_normal'):
+                 trainable_layer=True, initializer='glorot_normal', applyact2lastlayer=False):
 
         super().__init__(data_splitted, list_tests, list_params,
                  feature_keys, target_keys,cnn=False)
@@ -83,6 +83,7 @@ class model(prepare_inputs):
         self.regularization_paramater = 0.0
         self.dict_scalery    = data_splitted.dict_scalery
         self.dict_scalerx    = data_splitted.dict_scalerx
+        self.applyact2lastlayer = applyact2lastlayer
 
     def autoencoder(self,list_nn=[150,100,20],bottleneck=3,load_weights=False):
         self.list_nn      = list_nn
@@ -128,8 +129,11 @@ class model(prepare_inputs):
                          kernel_initializer=self.init,
                          kernel_regularizer=regularizers.l2(self.regularization_paramater))(self.L1)    
 
-
-        self.LOut = Dense(len(self.target_keys), activation='linear', name='all_targets',
+        if self.applyact2lastlayer:
+            act = self.act
+        else:
+            act = 'linear'
+        self.LOut = Dense(len(self.target_keys), activation=act, name='all_targets',
                          kernel_initializer=self.init,
                          kernel_regularizer=regularizers.l2(self.regularization_paramater))(self.L1)
 
